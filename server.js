@@ -431,7 +431,7 @@ async function getDeviceList() {
         { id: 'demo-hp', name: 'Hybride warmtepomp', class: 'heatpump', power: true, consumer: 'excluded' },
         { id: 'demo-thermostat', name: 'Thermostaat woonkamer', class: 'thermostat' },
         { id: 'demo-ev', name: 'Laadpaal oprit', class: 'evcharger', power: true, consumer: 'counted' },
-        { id: 'demo-water', name: 'Watermeter', class: 'sensor' },
+        { id: 'demo-water', name: 'Watermeter', class: 'sensor', waterMeter: true },
         { id: 'demo-dishwasher', name: 'Vaatwasser', class: 'socket', power: true, consumer: 'counted' },
         { id: 'demo-washer', name: 'Wasmachine', class: 'socket', power: true, consumer: 'counted' },
         { id: 'demo-fridge', name: 'Koelkast', class: 'socket', power: true, consumer: 'counted' },
@@ -469,6 +469,9 @@ async function getDeviceList() {
       capabilities: d.capabilities,
       temps: (d.capabilities || []).filter(c => c.startsWith('measure_temperature')),
       power: (d.capabilities || []).includes('measure_power'),
+      waterMeter: (d.capabilities || []).includes('meter_water'),
+      // A heat pump such as the Weheat gives its electric power as measure_power.in
+      heatPump: (d.capabilities || []).includes('measure_power.in'),
       estimate: hasUsageEstimate(d),
       copy: isCopy(d),
       consumer: consumerStatus(d, found),

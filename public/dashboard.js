@@ -512,6 +512,10 @@
     if (!cars.length && typeof chargerSoc === "number") {
       facts.push("<li><span>Accu auto</span><strong>".concat(nf(0).format(chargerSoc), "%</strong></li>"));
     }
+    chargers.filter((c) => c.session).forEach((c) => {
+      const label = chargers.length > 1 ? "Laadsessie ".concat(escapeHtml(c.name)) : c.session.last ? "Vorige laadsessie" : "Deze laadsessie";
+      facts.push("<li><span>".concat(label, "</span><strong>").concat(formatEnergy(c.session.kWh), " kWh</strong></li>"));
+    });
     if (chargers.length > 1) {
       chargers.forEach((c) => facts.push("<li><span>".concat(escapeHtml(c.name), "</span><strong>").concat(formatPower(c.watts), "</strong></li>")));
     }
@@ -1677,17 +1681,38 @@
   }
   const loadColor = (share) => share > 0.9 ? "var(--hot)" : share > 0.7 ? "var(--warm)" : share > 0.5 ? "#ffd60a" : "var(--ok)";
   const phaseLabel = (phases) => phases.map((n) => "L".concat(n)).join("+");
+  const GROUPS_UNIT_KEY = "energy-dashboard-groups-unit";
   function renderGroups(data) {
     const el = $("groups");
     if (!el) return;
     const groups = (data == null ? void 0 : data.groups) || [];
     toggleEmpty("groups", groups.length > 0);
     if (!groups.length) return;
+    let unit = "A";
+    try {
+      unit = localStorage.getItem(GROUPS_UNIT_KEY) === "W" ? "W" : "A";
+    } catch {
+    }
+    const nav = $("groups-unit");
+    if (nav) {
+      nav.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.unit === unit));
+      nav.onclick = (event) => {
+        var _a2;
+        const chosen = (_a2 = event.target.closest("button[data-unit]")) == null ? void 0 : _a2.dataset.unit;
+        if (!chosen) return;
+        try {
+          localStorage.setItem(GROUPS_UNIT_KEY, chosen);
+        } catch {
+        }
+        renderGroups(data);
+      };
+    }
+    const load = (g) => unit === "W" ? "".concat(formatPower(g.watts), ' <small class="muted">/ ').concat(formatPower(g.fuseAmps * 230 * Math.max(1, g.phases.length)), "</small>") : "".concat(nf(1).format(g.amps), ' A <small class="muted">/ ').concat(g.fuseAmps, " A</small>");
     const row = (g) => {
       const share = g.amps / g.fuseAmps;
       const on = [...g.on.map((d) => "".concat(escapeHtml(d.name), " ").concat(d.estimated ? "≈" : "").concat(formatPower(d.watts))), ...g.fixedWatts ? ["<span>vast ".concat(formatPower(g.fixedWatts), "</span>")] : []].join(" · ");
       const tag = g.phases.length > 1 ? ' <small class="muted">'.concat(phaseLabel(g.phases), "</small>") : "";
-      return '\n        <li>\n          <div class="consumer-row"><span>'.concat(escapeHtml(g.name)).concat(tag, "</span><strong>").concat(nf(1).format(g.amps), ' A <small class="muted">/ ').concat(g.fuseAmps, ' A</small></strong></div>\n          <div class="bar"><i style="width:').concat(Math.min(100, Math.max(2, share * 100)), "%;background:").concat(loadColor(share), '"></i></div>\n          ').concat(on ? '<small class="muted">'.concat(on, "</small>") : "", "\n        </li>");
+      return '\n        <li>\n          <div class="consumer-row"><span>'.concat(escapeHtml(g.name)).concat(tag, "</span><strong>").concat(load(g), '</strong></div>\n          <div class="bar"><i style="width:').concat(Math.min(100, Math.max(2, share * 100)), "%;background:").concat(loadColor(share), '"></i></div>\n          ').concat(on ? '<small class="muted">'.concat(on, "</small>") : "", "\n        </li>");
     };
     const phases = data.phases || [];
     if (!phases.length) {
@@ -2240,7 +2265,7 @@
     flow: "Het vermogen van dit moment tussen zon, net, huis en batterij, elke 10 seconden gelezen. Huis = net + zon − batterij. Onder de cirkels staan de kWh van vandaag.",
     waterheater: "De temperatuur van je boiler. De doucheminuten zijn een schatting uit de inhoud, de temperatuur van het koude water, je douchetemperatuur en je douchekop (bij de instellingen).",
     heating: "Kamertemperatuur van je thermostaat, en wat je warmtepomp of cv-ketel doet. Stroom komt van de meting van het toestel, gas van je slimme meter (het hele huis). Gas per graaddag corrigeert voor het weer.",
-    ev: "Vermogen en status van je laadpaal, en de geladen kWh in de gekozen periode uit Homey Insights.",
+    ev: "Vermogen en status van je laadpaal, de geladen kWh in de gekozen periode uit Homey Insights, en de kWh van de laadsessie als de app van je laadpaal die bijhoudt.",
     battery: "Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. De opbrengst is wat ontladen bespaarde min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep.",
     batteryhistory: "Wat de batterij laadde (van zon of net) en leverde (aan huis of net). Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.",
     tiles: "De totalen van de gekozen periode uit de meterstanden in Homey Insights, vergeleken met de vorige periode tot hetzelfde moment. Zelfvoorzienend is het deel van je verbruik uit zon en batterij.",
@@ -2261,7 +2286,7 @@
     baseload: "Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.",
     alerts: "Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.",
     phases: "Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.",
-    groups: "De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf (zonder meter: het verbruik dat in Homey is ingesteld), plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase, min wat de thuisbatterij er laadt) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was.",
+    groups: "De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf (zonder meter: het verbruik dat in Homey is ingesteld), plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase, min wat de thuisbatterij er laadt) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was. Met A en W bovenaan kies je of de groepen in ampère of in watt staan.",
     peak: "Voor het Belgische capaciteitstarief: je hoogste gemiddelde afname over een kwartier deze maand, van je meter of elke minuut gemeten door de app."
   };
   const fact = (label, value) => "<li><span>".concat(label, "</span><strong>").concat(value, "</strong></li>");

@@ -1012,6 +1012,9 @@ class EnergyDashboardApp extends Homey.App {
           name: d.name,
           class: d.virtualClass || d.class,
           power: (d.capabilities || []).includes('measure_power'),
+          waterMeter: (d.capabilities || []).includes('meter_water'),
+          // A heat pump such as the Weheat gives its electric power as measure_power.in
+          heatPump: (d.capabilities || []).includes('measure_power.in'),
           temps: (d.capabilities || []).filter(c => c.startsWith('measure_temperature')),
           estimate: hasUsageEstimate(d) || estimatedIds.has(d.id),
           // A summary of Power by the Hour (Σ): it copies another meter, so it is no group device

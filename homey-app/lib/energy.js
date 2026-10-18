@@ -167,7 +167,9 @@ function discover(devices, pinned = {}) {
   if (pinnedCar) cars.splice(0, cars.length, pinnedCar, ...cars.filter(d => d.id !== pinnedCar.id));
   const car = cars[0] || null;
 
-  const water = byId(pinned.water)
+  // A device chosen as water meter only counts with a water counter (a P1 meter has none)
+  const pinnedWater = byId(pinned.water);
+  const water = (pinnedWater && has(pinnedWater, 'meter_water') ? pinnedWater : null)
     || own.find(d => has(d, 'meter_water') && d.id !== p1?.id)
     || (p1 && has(p1, 'meter_water') ? p1 : null)
     || null;
@@ -683,6 +685,23 @@ function buildHeating(found) {
   };
 }
 
+// kWh of a charging session as the app of the charger keeps it (Zaptec: meter_power.current_session
+// and meter_power.last_session): the running session while it has taken something, else the last one
+const SESSION_NOW = /^meter_power\.(current_session|session|current_charge)$/;
+const SESSION_LAST = /^meter_power\.(last_session|last_charge)$/;
+
+function evSession(device) {
+  const reading = pattern => {
+    const cap = (device.capabilities || []).find(c => pattern.test(c));
+    const v = cap ? value(device, cap) : null;
+    return typeof v === 'number' && v >= 0 ? v : null;
+  };
+  const now = reading(SESSION_NOW);
+  const last = reading(SESSION_LAST);
+  if (now > 0 || (now !== null && last === null)) return { kWh: now, last: false };
+  return last !== null ? { kWh: last, last: true } : null;
+}
+
 function buildEv(found) {
   if (!found.evChargers.length) return null;
   const chargers = found.evChargers.map(d => {
@@ -694,6 +713,7 @@ function buildEv(found) {
       state: EV_STATES[state] || (charging === true ? 'Laden' : charging === false ? 'Niet aan het laden' : null),
       charging: state ? state === 'plugged_in_charging' : charging === true,
       soc: value(d, 'measure_battery'),
+      session: evSession(d),
     };
   });
   const cars = (found.cars || (found.car ? [found.car] : [])).map(d => ({
@@ -1665,14 +1685,17 @@ function buildPowerCurve(start, end, until, { grid, solar, battery }) {
   return { start: start.toISOString(), end: end.toISOString(), step: POWER_STEP / 1000, points };
 }
 
+// No home connection, solar system or battery reaches this; a device that reports more (after a
+// power cut, say) glitched, and one such reading would stretch the chart so far that the rest of
+// the day looks flat
+const MAX_POWER_W = 100000;
+const plausiblePower = entries => entries.filter(e => Math.abs(e.v) <= MAX_POWER_W);
+
 // Grid power (W, positive when taking from the grid) of the P1 meter: its power readings, or,
 // when those are not in Insights, the increase of its import minus export counters
-// No home connection reaches this; a meter that reports more (after a power cut, say) glitched, and
-// one such reading would stretch the chart so far that the rest of the day looks flat
-const MAX_GRID_W = 100000;
 
 async function gridPower(p1, read) {
-  const measured = (await read(p1, 'measure_power')).filter(e => Math.abs(e.v) <= MAX_GRID_W);
+  const measured = plausiblePower(await read(p1, 'measure_power'));
   if (measured.length) return measured;
   const byTime = new Map();
   const add = (list, sign) => {
@@ -1680,7 +1703,7 @@ async function gridPower(p1, read) {
   };
   for (const cap of meterCapabilities(p1, 'import')) add(await read(p1, cap), 1);
   for (const cap of meterCapabilities(p1, 'export')) add(await read(p1, cap), -1);
-  return [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ t: new Date(t), v })).filter(e => Math.abs(e.v) <= MAX_GRID_W);
+  return plausiblePower([...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ t: new Date(t), v })));
 }
 
 async function buildPowerHistory(client, found, period, cfg) {
@@ -1698,9 +1721,9 @@ async function buildPowerHistory(client, found, period, cfg) {
     Promise.all(found.solar.map(async panel => {
       let entries = has(panel, 'measure_power') ? await read(panel, 'measure_power') : [];
       if (!entries.length) entries = powerFromMeter(await solarMeterEntries(panel, read));
-      return entries.map(e => ({ t: e.t, v: Math.abs(e.v) }));
+      return plausiblePower(entries.map(e => ({ t: e.t, v: Math.abs(e.v) })));
     })),
-    Promise.all(found.batteries.map(b => batteryPowerEntries(b, read, cfg.battery))),
+    Promise.all(found.batteries.map(async b => plausiblePower(await batteryPowerEntries(b, read, cfg.battery)))),
   ]);
   if (!grid.length) return null;
   return buildPowerCurve(start, end, until, {

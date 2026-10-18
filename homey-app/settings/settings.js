@@ -77,7 +77,8 @@ function onHomeyReady(Homey) {
       fillSelect(form.p1, list.devices, devices.p1, autoLabel(list.found.p1));
       fillSelect(form.boiler, list.devices, devices.boiler, autoLabel(list.found.boiler));
       fillSelect(form.thermostat, list.devices, devices.thermostat, autoLabel(list.found.thermostat));
-      fillSelect(form.water, list.devices, devices.water, autoLabel(list.found.water));
+      // Only devices with a water counter; one chosen before without it falls back to automatic
+      fillSelect(form.water, list.devices.filter(d => d.waterMeter), devices.water, autoLabel(list.found.water));
       form.fuseAmps.value = config.grid?.fuseAmps ?? 25;
       form.capacityTariff.value = showAmount(config.grid?.capacityTariff);
       form.capacityMin.value = config.grid?.capacityMin ?? 2.5;
@@ -89,7 +90,7 @@ function onHomeyReady(Homey) {
       form.alertHours.value = config.alerts?.hours ?? 4;
       form.alertNotify.checked = Boolean(config.alerts?.notify);
       fillChecks('heating-list', 'heating', list.devices, devices.heating || [],
-        d => d.class === 'heatpump' || d.class === 'boiler' || /warmtepomp|heat ?pump|cv|ketel/i.test(d.name),
+        d => d.class === 'heatpump' || d.class === 'boiler' || d.heatPump || /warmtepomp|heat|cv|ketel/i.test(d.name),
         __('noHeating'));
       fillChecks('ev-list', 'evChargers', list.devices, devices.evChargers || [],
         d => d.class === 'evcharger' || /laadpa|charger|wallbox|easee|zaptec|alfen/i.test(d.name),

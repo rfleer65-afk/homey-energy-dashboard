@@ -668,6 +668,11 @@
     if (!cars.length && typeof chargerSoc === 'number') {
       facts.push(`<li><span>Accu auto</span><strong>${nf(0).format(chargerSoc)}%</strong></li>`);
     }
+    // kWh of the running or last charging session, when the app of the charger keeps it
+    chargers.filter(c => c.session).forEach(c => {
+      const label = chargers.length > 1 ? `Laadsessie ${escapeHtml(c.name)}` : c.session.last ? 'Vorige laadsessie' : 'Deze laadsessie';
+      facts.push(`<li><span>${label}</span><strong>${formatEnergy(c.session.kWh)} kWh</strong></li>`);
+    });
     if (chargers.length > 1) {
       chargers.forEach(c => facts.push(`<li><span>${escapeHtml(c.name)}</span><strong>${formatPower(c.watts)}</strong></li>`));
     }
@@ -2070,6 +2075,7 @@
   // Green up to half the fuse, then yellow, orange from 70% and red from 90%
   const loadColor = share => (share > 0.9 ? 'var(--hot)' : share > 0.7 ? 'var(--warm)' : share > 0.5 ? '#ffd60a' : 'var(--ok)');
   const phaseLabel = phases => phases.map(n => `L${n}`).join('+');
+  const GROUPS_UNIT_KEY = 'energy-dashboard-groups-unit';
 
   // The load per group in the fuse box against its fuse, with the devices that use the most.
   // With phases set, the groups are shown per phase, each with what the meter measures on that
@@ -2080,6 +2086,22 @@
     const groups = data?.groups || [];
     toggleEmpty('groups', groups.length > 0);
     if (!groups.length) return;
+    // The load in amps or in watts, chosen per screen
+    let unit = 'A';
+    try { unit = localStorage.getItem(GROUPS_UNIT_KEY) === 'W' ? 'W' : 'A'; } catch { /* storage unavailable */ }
+    const nav = $('groups-unit');
+    if (nav) {
+      nav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.unit === unit));
+      nav.onclick = event => {
+        const chosen = event.target.closest('button[data-unit]')?.dataset.unit;
+        if (!chosen) return;
+        try { localStorage.setItem(GROUPS_UNIT_KEY, chosen); } catch { /* storage unavailable */ }
+        renderGroups(data);
+      };
+    }
+    const load = g => (unit === 'W'
+      ? `${formatPower(g.watts)} <small class="muted">/ ${formatPower(g.fuseAmps * 230 * Math.max(1, g.phases.length))}</small>`
+      : `${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small>`);
     const row = g => {
       const share = g.amps / g.fuseAmps;
       // The fixed use in an element of its own, so the translation finds it
@@ -2087,7 +2109,7 @@
       const tag = g.phases.length > 1 ? ` <small class="muted">${phaseLabel(g.phases)}</small>` : '';
       return `
         <li>
-          <div class="consumer-row"><span>${escapeHtml(g.name)}${tag}</span><strong>${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small></strong></div>
+          <div class="consumer-row"><span>${escapeHtml(g.name)}${tag}</span><strong>${load(g)}</strong></div>
           <div class="bar"><i style="width:${Math.min(100, Math.max(2, share * 100))}%;background:${loadColor(share)}"></i></div>
           ${on ? `<small class="muted">${on}</small>` : ''}
         </li>`;
@@ -2707,7 +2729,7 @@
     flow: 'Het vermogen van dit moment tussen zon, net, huis en batterij, elke 10 seconden gelezen. Huis = net + zon − batterij. Onder de cirkels staan de kWh van vandaag.',
     waterheater: 'De temperatuur van je boiler. De doucheminuten zijn een schatting uit de inhoud, de temperatuur van het koude water, je douchetemperatuur en je douchekop (bij de instellingen).',
     heating: 'Kamertemperatuur van je thermostaat, en wat je warmtepomp of cv-ketel doet. Stroom komt van de meting van het toestel, gas van je slimme meter (het hele huis). Gas per graaddag corrigeert voor het weer.',
-    ev: 'Vermogen en status van je laadpaal, en de geladen kWh in de gekozen periode uit Homey Insights.',
+    ev: 'Vermogen en status van je laadpaal, de geladen kWh in de gekozen periode uit Homey Insights, en de kWh van de laadsessie als de app van je laadpaal die bijhoudt.',
     battery: 'Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. De opbrengst is wat ontladen bespaarde min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep.',
     batteryhistory: 'Wat de batterij laadde (van zon of net) en leverde (aan huis of net). Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.',
     tiles: 'De totalen van de gekozen periode uit de meterstanden in Homey Insights, vergeleken met de vorige periode tot hetzelfde moment. Zelfvoorzienend is het deel van je verbruik uit zon en batterij.',
@@ -2728,7 +2750,7 @@
     baseload: 'Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.',
     alerts: 'Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.',
     phases: 'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.',
-    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf (zonder meter: het verbruik dat in Homey is ingesteld), plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase, min wat de thuisbatterij er laadt) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was.',
+    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf (zonder meter: het verbruik dat in Homey is ingesteld), plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase, min wat de thuisbatterij er laadt) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was. Met A en W bovenaan kies je of de groepen in ampère of in watt staan.',
     peak: 'Voor het Belgische capaciteitstarief: je hoogste gemiddelde afname over een kwartier deze maand, van je meter of elke minuut gemeten door de app.',
   };
 
