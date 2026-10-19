@@ -1,115 +1,69 @@
-# Energie dashboard voor Homey Pro
+# Energie Dashboard voor Homey Pro
 
-> **Aanbevolen: de Homey-app in [`homey-app/`](homey-app/README.md)**, als testversie in de App Store: https://homey.app/a/com.drpeppers.energydashboard/test/. Die draait de webpagina op je Homey Pro zelf (`http://<ip-van-je-homey>:8686`) en heeft geen aparte computer of API-key nodig.
->
-> Deze map bevat ook een losse versie die op een pc draait (hieronder beschreven). Die dient vooral als testomgeving met voorbeelddata. Na wijzigingen in `shared/` of `lib/energy.js` voer je `npm run sync` uit.
+*English below.*
 
-Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht als het energy dashboard van Home Assistant. Het bestaat uit blokken die je zelf indeelt:
+Een Homey-app die je energie overzichtelijk laat zien op een webpagina: wat je zonnepanelen opwekken, wat je van het net haalt en teruglevert, wat je thuisbatterij doet, welke apparaten het meest gebruiken en wat het kost. Het ziet eruit als de Homey-app en is bedoeld voor een tablet aan de muur, maar werkt ook op je telefoon of computer.
 
-- **Energie nu**: live energiestroom tussen zon, net, huis en thuisbatterij
-- **Totalen** per dag, week, maand of jaar, en **grafieken** voor elektriciteit, zon, gas en water
-- **Vermogen vandaag**: het vermogen door de dag, met zelfverbruik, afname van het net en teruglevering
-- **Energiestromen**: een Sankey-grafiek van de bronnen via het huis naar de individuele verbruikers, live of voor de gekozen periode
-- **Apparaten nu** en **Verbruik per apparaat**
-- **Warm water**, **Verwarming**, **Laadpaal**, **Thuisbatterij** en **Batterijgebruik**, zodra je zo'n apparaat hebt
-- **Kosten** en **Stroomprijs** met je eigen contract, **Einde salderen**, **Meterstanden** (voor je energieleverancier), **Sluipverbruik**, **Batterij kiezen** (hoe groot een thuisbatterij moet zijn), **Fasebelasting**, **Groepen** (belasting per groep in de meterkast, ook voor een apparaat op twee groepen en apparaten die niet in Homey staan), **Maandpiek** en **Meldingen**
-- **Terugkijken**: sleep bij Vandaag of Gisteren naar een eerder tijdstip en zie het dashboard van dat moment
-
-Alle blokken staan uitgelegd in [`homey-app/README.md`](homey-app/README.md). Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans.
-
-## Wat je nodig hebt
-
-- Een computer die aan blijft staan in je thuisnetwerk (pc, laptop, NAS of Raspberry Pi) met [Node.js](https://nodejs.org) 18 of nieuwer
-- Een Homey Pro met een P1-meter; zonnepanelen, thuisbatterij, boiler en andere apparaten zijn optioneel
-
-Er hoeft niets geïnstalleerd te worden met `npm install`: er zijn geen extra pakketten.
+![Het dashboard](docs/screenshots/dashboard-dark.png)
 
 ## Installeren
 
-1. **Maak een API-key in Homey.** Ga naar [my.homey.app](https://my.homey.app), kies je Homey en ga naar *Instellingen → API Keys → Nieuwe API Key*. Geef hem een naam (bijvoorbeeld "Dashboard") en vink alleen **Apparaten bekijken**, **Insights bekijken** en **Energie bekijken** aan (dat laatste voor de prijzen en geschatte apparaten van Homey Energie). Kopieer de key.
-2. **Zoek het IP-adres van je Homey.** Dat staat in de Homey-app onder *Instellingen → Algemeen*, of in je router.
-3. **Maak `config.json`.** Kopieer `config.example.json` naar `config.json` en vul `address` en `token` in:
-   ```json
-   "homey": {
-     "address": "http://192.168.1.50",
-     "token": "jouw-api-key"
-   }
-   ```
-4. **Start het dashboard.** Dubbelklik op `start.bat`, of voer `node server.js` uit.
-5. Open **http://localhost:8080** op dezelfde computer, of `http://<ip-van-die-computer>:8080` op je tablet of telefoon.
+1. Open de app in de Homey App Store: https://homey.app/a/com.drpeppers.energydashboard/test/ en kies **Installeren**.
+2. Open in de Homey-app *Meer → Apps → Energie Dashboard → Instellingen*. Bovenaan staat de link naar je dashboard.
+3. Open die link op je tablet, telefoon of computer in je thuisnetwerk.
 
-Zonder `config.json` (of met de voorbeeld-key) draait het dashboard in **demo-modus** met voorbeelddata.
+Meer is er niet nodig: geen extra computer, geen account en geen API-key. Updates komen vanzelf binnen, net als bij andere apps. De app vindt je P1-meter, zonnepanelen, thuisbatterij en andere apparaten zelf.
 
-Kreeg je een diagnose van een gebruiker met **Mijn dashboard meesturen**, bewaar die dan als bestand en start `node server.js --snapshot=rapport.json`. Het dashboard toont dan precies wat die gebruiker zag, als **momentopname** (alleen de periode Vandaag).
+Homey vraagt bij het installeren om toegang tot je Homey. Die is nodig om de gegevens van je andere apps te lezen, zoals de P1-meter en de omvormer. Het dashboard leest alleen en bedient niets.
 
-## Instellingen in `config.json`
+## Wat je nodig hebt
 
-| Instelling | Uitleg |
+- Een Homey Pro
+- Een slimme meter in Homey, bijvoorbeeld via een P1-dongel van HomeWizard
+
+Zonnepanelen, een thuisbatterij, laadpaal, warmtepomp, boiler of slimme stekkers zijn niet nodig, maar als je ze hebt, verschijnen ze vanzelf op het dashboard.
+
+## Wat je ziet
+
+Het dashboard bestaat uit blokken die je zelf kiest, verschuift en groter of kleiner maakt met het potlood rechtsboven. Onder andere:
+
+- **Energie nu**: wat er op dit moment tussen zon, net, huis en batterij stroomt
+- **Totalen** per dag, week, maand en jaar, vergeleken met de vorige periode
+- **Vermogen vandaag**: je verbruik en opwek door de dag heen
+- **Energiestromen**: waar je stroom vandaan kwam en welk apparaat het gebruikte
+- **Kosten**, **Stroomprijs** en **Einde salderen**, met je eigen energiecontract
+- **Thuisbatterij** en **Batterijgebruik**: wat de batterij laadde en leverde en wat dat opleverde
+- **Warm water**, **Verwarming** en **Laadpaal**
+- **Groepen** en **Fasebelasting**: hoe zwaar elke groep in je meterkast belast is
+- **Meterstanden**, **Sluipverbruik**, **Meldingen** en **Batterij kiezen** (welke thuisbatterij bij je verbruik past)
+
+Met de knop **i** bij elk blok lees je hoe het berekend is. Bij Vandaag en Gisteren kun je terugkijken naar een eerder moment van de dag. Er zijn ook widgets voor Homey Dashboards.
+
+Het dashboard werkt in licht en donker en in tien talen: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees en Spaans.
+
+De volledige uitleg van alle blokken en instellingen staat in de [handleiding](homey-app/README.md).
+
+| | |
 |---|---|
-| `port` | Poort van het dashboard (standaard 8080) |
-| `devices` | `p1`, `solar`, `batteries`, `boiler`, `heating`, `thermostat`, `evChargers` en `water`. Laat leeg om automatisch te zoeken. Worden je apparaten niet gevonden, open dan `http://localhost:8080/api/devices` en zet de juiste `id` hier neer (`solar`, `batteries`, `heating` en `evChargers` zijn lijsten) |
-| `boiler.liters` | Inhoud van je boiler (Lydos Hybrid: 80 of 110 liter) |
-| `boiler.coldWaterTemp` | Temperatuur van het koude leidingwater; weglaten (of `null`) volgt het seizoen, ongeveer 6 °C in februari en 17 °C in augustus |
-| `boiler.showerTemp` | Temperatuur waarop je doucht (ongeveer 38–40 °C) |
-| `boiler.showerFlow` | Liters per minuut van je douchekop (spaardouche ongeveer 6–7, normaal 8–10) |
-| `boiler.warmFrom` | Vanaf deze temperatuur staat de boiler op "Warm" |
-| `grid.fuseAmps` | Hoofdzekering per fase, voor het blok Fasebelasting |
-| `grid.capacityTariff`, `grid.capacityMin` | Voor het Belgische capaciteitstarief: € per kW per jaar en het minimum per maand (standaard 2,5 kW), voor het blok Maandpiek |
-| `prices` | `source`: `"auto"` (Homey Energie als daar dynamische prijzen staan, anders EnergyZero), `"homey"`, `"energyzero"` of `"off"`. Prijzen uit Homey vragen een API-key die ook **Energie bekijken** mag |
-| `contract` | Stroom (`electricity`: `type` `"fixed"` met `normal`, `low`, `export`, of `"dynamic"` met `markup`, `energyTax`, `netting`, `exportFee`), gas (`gas`: `type` `"fixed"` met `price`, of `"dynamic"` met `markup`, `energyTax`), `water` (€/m³), `monthly` (vaste kosten per maand) en `taxReduction` (per jaar). Alles inclusief btw; zie `config.example.json` en *Prijzen en kosten* in `homey-app/README.md`. Het oude blok `tariffs` werkt nog |
-| `forecast` | Zonneverwachting: `enabled`, `lat`, `lon` en `planes`: een lijst met `kwp`, `tilt` (0–90) en `azimuth` (0 = zuid, -90 = oost, 90 = west), zoveel dakvlakken als je hebt |
-| `editPin` | Optionele pincode voor het bewerken van de indeling op het dashboard |
-| `layout` | `null` voor de automatische indeling, of een lijst zoals `[{ "id": "flow", "size": "half", "rows": 20 }, …]`. `rows` is optioneel: de hoogte in rijen van 24 pixels. Blokken en breedtes staan in `homey-app/README.md`. Je kunt de indeling ook op het dashboard aanpassen met het potlood; die wordt dan hier opgeslagen |
+| ![Energie nu](docs/screenshots/energy-now.png) | ![Energiestromen](docs/screenshots/energy-flows.png) |
+| ![Thuisbatterij](docs/screenshots/battery.png) | ![Telefoon](docs/screenshots/phone-nl.png) |
 
-## Thuisbatterij
+## Vragen of iets werkt niet?
 
-Voeg de batterij in Homey toe met de app van je merk (bijvoorbeeld [Zendure Local](https://homey.app/en-us/app/com.tweakers.zendure/Zendure-Local/) voor een Zendure SolarFlow). Het dashboard vindt hem dan vanzelf als hij als batterij bij Homey Energie bekend is. Zo niet, zet zijn `id` bij `devices.batteries` in `config.json`.
+- Stel je vraag op het Homey-forum: [Nederlands](https://community.homey.app/t/160118) of [English](https://community.homey.app/t/160116).
+- Of maak een [issue](https://github.com/WNijhof/homey-energy-dashboard/issues) aan op GitHub.
+- Klopt er iets niet, stuur dan een diagnose mee: in de instellingen van de app onder **Diagnose delen**. Daarmee kan ik zien welke apparaten de app gevonden heeft.
 
-Daarna verschijnen:
+---
 
-- een **batterij** onder in "Nu", met laadniveau en of hij laadt of ontlaadt;
-- tegels voor **geladen** en **ontladen** kWh;
-- in de elektriciteitsgrafiek **"Uit batterij"** boven de nul en **"Batterij geladen"** onder de nul;
-- de batterij als bron en bestemming in de **Energiestromen**.
+## English
 
-Zelfvoorzienend telt energie uit de batterij mee, net als in Home Assistant. Staan laden en ontladen omgedraaid, zet dan `battery.invertPower` op `true`.
+A Homey app that shows your energy on a web page: what your solar panels produce, what you take from and return to the grid, what your home battery does, which devices use the most and what it costs. It looks like the Homey app and is made for a tablet on the wall, but also works on your phone or computer.
 
-## Energiestromen (Sankey)
+**Install:** open https://homey.app/a/com.drpeppers.energydashboard/test/ and choose **Install**. Then open *More → Apps → Energy Dashboard → Settings* in the Homey app: the link to your dashboard is at the top. No extra computer, account or API key is needed, and the app finds your P1 meter, solar panels, battery and other devices by itself. You need a Homey Pro with a smart meter (P1); everything else is optional.
 
-Met **Live** en **Periode** bovenin het blok kies je tussen het vermogen van dit moment (in watt, met bewegende stromen) en de kWh van de gekozen periode.
+Questions or problems: ask on the [Homey forum](https://community.homey.app/t/160116) or open an [issue](https://github.com/WNijhof/homey-energy-dashboard/issues), if possible with a diagnosis from the app settings (**Share diagnosis**).
 
-De grafiek toont:
+---
 
-1. **Bronnen**: zon, net en batterij.
-2. **Bestemmingen**: het huis, teruglevering en het laden van de batterij.
-3. **Verbruikers**: vanuit het huis per apparaat.
-
-Apparaten verschijnen hier als ze een kWh-meter hebben, bijvoorbeeld slimme stekkers. Wat niet per apparaat gemeten wordt, staat bij **Niet gemeten**. Apparaten met minder dan 1,5% van het verbruik tellen ook mee bij Niet gemeten, en er worden maximaal 15 verbruikers getoond.
-
-Let op: meet een apparaat een groep van andere gemeten apparaten (bijvoorbeeld een tussenmeter op een groep), dan telt dat verbruik dubbel.
-
-## Hoe de doucheminuten berekend worden
-
-Heet water uit de boiler wordt in de douche gemengd met koud water. Hoe heter de boiler, hoe meer douchewater je krijgt:
-
-```
-liters douchewater = boilerinhoud × (T_boiler − T_koud) / (T_douche − T_koud)
-doucheminuten      = liters douchewater / liters per minuut
-```
-
-Voorbeeld: 80 L op 55 °C, koud water 10 °C, douchen op 40 °C en 8 L/min geeft 80 × 45 / 30 = 120 L, dus ongeveer 15 minuten.
-
-Dit is een schatting: de Lydos meet de temperatuur op één plek in de tank, en het water is niet overal even warm. Het aantal **douchebeurten** komt rechtstreeks van de Lydos zelf.
-
-## Waar de gegevens vandaan komen
-
-- **Live waarden** komen van de apparaten in Homey en worden elke 10 seconden ververst.
-- **Totalen en grafieken** komen uit Homey Insights: de meterstanden van je P1-meter en omvormer. Ze worden elke minuut ververst.
-- De API-key blijft op de computer waarop de server draait en gaat nooit naar de browser. Het dashboard leest alleen gegevens en kan niets aan je apparaten veranderen.
-
-## Problemen oplossen
-
-- **"Homey weigert de API-key"**: controleer de key en of die Apparaten en Insights mag bekijken.
-- **"Homey is niet bereikbaar"**: klopt het IP-adres? Geef je Homey eventueel een vast IP-adres in je router.
-- **Grafieken blijven leeg**: controleer of Insights aan staat voor de energiemeters van de P1-meter (*Apparaat → Instellingen → Insights*).
-- **Tablet kan het dashboard niet openen**: sta Node.js toe in de Windows Firewall voor privénetwerken.
+Wil je zelf aan de code werken? Zie [DEVELOPMENT.md](DEVELOPMENT.md).

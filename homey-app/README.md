@@ -34,7 +34,7 @@ Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgord
 | **Meldingen** | Apparaten die blijven aanstaan, stijgend sluipverbruik, een meter die niet reageert, een negatieve prijs terwijl je teruglevert (zie *Meldingen*) |
 | **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering, en L1, L2 en L3 door de dag heen in één grafiek |
 | **Groepen** | De belasting per groep in je meterkast ten opzichte van de zekering, per fase, met de apparaten die het meest gebruiken en per fase wat de groepen niet verklaren (Overig). Daaronder per groep een balk door de dag. Je maakt de groepen aan in de instellingen van de app |
-| **Batterijgebruik** | Wat de thuisbatterij per uur, dag of maand laadde (van de zon of het net) en leverde (aan huis of net), wat laden gemiddeld kostte en ontladen bespaarde, en per dag wanneer hij laadde of leverde en tegen welke prijs |
+| **Batterijgebruik** | Wat de thuisbatterij per uur, dag of maand laadde (van de zon of het net) en leverde (aan huis of net), wat laden kostte (van het net, of de teruglevering die je misliep bij zonnestroom), wat ontladen bespaarde of bij teruglevering opbracht en het saldo daarvan, en per dag wanneer hij laadde of leverde en tegen welke prijs |
 | **Maandpiek** | Voor het Belgische capaciteitstarief: je hoogste kwartiervermogen van deze maand, het lopende kwartier, de afgelopen 12 maanden en wat het kost |
 
 Blokken zonder passend apparaat laat de standaardindeling weg. Het dashboard werkt dus ook voor een huis zonder zonnepanelen, met een hybride of all-electric warmtepomp, of met een laadpaal.
@@ -86,8 +86,6 @@ De indeling kan ook in de instellingen van de app in Homey.
 De app staat als testversie in de Homey App Store: open https://homey.app/a/com.drpeppers.energydashboard/test/ en kies **Installeren**. Updates komen daarna vanzelf binnen, net als bij andere apps.
 
 Bij het installeren vraagt Homey om **volledige toegang tot Homey**. Die is nodig omdat de app de gegevens van andere apps leest: de P1-meter, je omvormer, je batterij en de boiler. De app leest alleen gegevens en bedient niets. Voor de prijzen uit Power by the Hour vraagt hij ook toegang tot die app.
-
-Zelf bouwen kan ook, met de [Homey CLI](https://apps.developer.homey.app/the-basics/getting-started/homey-cli) (`npm install -g homey`, daarna `homey login`): `npm install` en `homey app install` in deze map. Zie ook *Ontwikkelen*.
 
 ## Het adres vinden
 
@@ -290,6 +288,4 @@ doucheminuten      = liters douchewater / liters per minuut
 
 ## Ontwikkelen
 
-De webpagina (`web/`) en de rekenlogica (`lib/energy.js`) worden gedeeld met de testserver in de map erboven. Pas ze daar aan in `shared/`, `public/index.html` en `lib/`, en voer daarna `npm run sync` uit in de map erboven. Alleen `web/site.js` is specifiek voor de Homey-app.
-
-Zonder Homey bekijken: start in de map erboven `node server.js` en open http://localhost:8080 (dashboard met voorbeelddata) of http://localhost:8080/preview/settings/ (instellingenpagina).
+Zie [DEVELOPMENT.md](../DEVELOPMENT.md).
