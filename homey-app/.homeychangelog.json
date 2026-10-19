@@ -1,4 +1,8 @@
 {
+  "0.2.23": {
+    "en": "Optional: calibrate the shower minutes with a button in the shower, using the Flow actions Shower started and Shower finished (turn it on in the app settings under Water heater). In the Battery use block the export missed by charging from the sun has its own name, and the parts now add up exactly to the balance.",
+    "nl": "Optioneel: de doucheminuten ijken met een knop in de douche, via de Flow-acties Douche gestart en Douche klaar (aanzetten in de app-instellingen bij Boiler). In het blok Batterijgebruik heet laden met zon nu Misgelopen teruglevering, en de bedragen tellen precies op tot het saldo."
+  },
   "0.2.22": {
     "en": "The Circuits widget can show the load in watts as well as amps (widget setting). The Battery use block shows what charging from the grid cost, the export missed by charging from the sun, the import saved and what export to the grid earned, and the balance of these. Earnings is now called Balance, because energy still in the battery is not counted.",
     "nl": "De widget Groepen toont de belasting naar keuze in ampère of in watt (instelling van de widget). Het blok Batterijgebruik toont apart wat laden van het net kostte, de teruglevering die je misliep door met zon te laden, de inkoop die ontladen bespaarde en wat teruglevering uit de batterij opbracht, met het saldo daarvan. Opbrengst heet nu Saldo, omdat energie die nog in de batterij zit niet meetelt."

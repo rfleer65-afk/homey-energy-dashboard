@@ -938,7 +938,7 @@
     // missed). Energy still in the battery is not valued, so it is not called earnings (GitHub #20).
     const earnings = history?.batteryEarnings;
     if (earnings) {
-      facts.push(`<li><span>Saldo ${period}</span><strong>${euro(earnings.withNetting)}</strong></li>`);
+      facts.push(`<li><span>Saldo ${period}</span><strong>${euro(partsTotal(batteryParts(earnings)))}</strong></li>`);
       if (Math.abs(earnings.withoutNetting - earnings.withNetting) >= 0.01) {
         facts.push(`<li><span>Zonder salderen (vanaf 2027)</span><strong>${euro(earnings.withoutNetting)}</strong></li>`);
       }
@@ -2338,8 +2338,9 @@
     // What charging cost and what discharging saved or earned, apart, then the balance
     const b = history.batteryEarnings;
     if (b) {
-      batteryParts(b).forEach(([label, value]) => facts.push(`<li><span>${label}</span><strong>${euro(value)}</strong></li>`));
-      facts.push(`<li><span>Saldo ${period}${b.unpriced > 0.05 ? ' (zonder prijs voor een deel)' : ''}</span><strong>${euro(b.withNetting)}</strong></li>`);
+      const parts = batteryParts(b);
+      parts.forEach(([label, value]) => facts.push(`<li><span>${label}</span><strong>${euro(value)}</strong></li>`));
+      facts.push(`<li><span>Saldo ${period}${b.unpriced > 0.05 ? ' (zonder prijs voor een deel)' : ''}</span><strong>${euro(partsTotal(parts))}</strong></li>`);
     }
     $('batteryhistory-facts').innerHTML = facts.join('');
 
@@ -2370,13 +2371,19 @@
   }
 
   // The money parts of the battery balance: costs negative, savings and export positive. The
-  // solar and export parts only when there are any, to keep the block short.
+  // solar and export parts only when there are any, to keep the block short. Rounded to cents,
+  // so the shown parts add up to the shown balance.
   function batteryParts(b) {
-    const parts = [['Geladen van het net', -(b.gridCharge || 0)]];
-    if (b.solarCharge >= 0.005) parts.push(['Geladen van de zon', -b.solarCharge]);
-    parts.push(['Ontladen naar huis', b.savedImport || 0]);
-    if (b.gridExport >= 0.005) parts.push(['Ontladen naar het net', b.gridExport]);
+    const cents = v => Math.round((v || 0) * 100) / 100;
+    const parts = [['Geladen van het net', -cents(b.gridCharge)]];
+    if (b.solarCharge >= 0.005) parts.push(['Misgelopen teruglevering', -cents(b.solarCharge)]);
+    parts.push(['Ontladen naar huis', cents(b.savedImport)]);
+    if (b.gridExport >= 0.005) parts.push(['Ontladen naar het net', cents(b.gridExport)]);
     return parts;
+  }
+
+  function partsTotal(parts) {
+    return Math.round(parts.reduce((sum, [, v]) => sum + v * 100, 0)) / 100;
   }
 
   // ---------- Edit mode ----------
@@ -2861,7 +2868,7 @@
       if (!b) return '';
       const parts = batteryParts(b);
       const sum = parts.map(([, v], i) => (i ? `${v < 0 ? '−' : '+'} ${money(Math.abs(v))}` : money(v))).join(' ');
-      return `<ul class="facts">${parts.map(([label, v]) => fact(label, money(v))).join('')}${fact('Saldo', `${sum} = ${money(b.withNetting)}`)}</ul>`;
+      return `<ul class="facts">${parts.map(([label, v]) => fact(label, money(v))).join('')}${fact('Saldo', `${sum} = ${money(partsTotal(parts))}`)}</ul>`;
     }
     if (id === 'batterysize') {
       const all = state.live?.batterysize;

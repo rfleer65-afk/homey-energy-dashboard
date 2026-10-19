@@ -737,7 +737,7 @@
     }
     const earnings = history == null ? void 0 : history.batteryEarnings;
     if (earnings) {
-      facts.push("<li><span>Saldo ".concat(period, "</span><strong>").concat(euro(earnings.withNetting), "</strong></li>"));
+      facts.push("<li><span>Saldo ".concat(period, "</span><strong>").concat(euro(partsTotal(batteryParts(earnings))), "</strong></li>"));
       if (Math.abs(earnings.withoutNetting - earnings.withNetting) >= 0.01) {
         facts.push("<li><span>Zonder salderen (vanaf 2027)</span><strong>".concat(euro(earnings.withoutNetting), "</strong></li>"));
       }
@@ -1907,8 +1907,9 @@
     ];
     const b = history.batteryEarnings;
     if (b) {
-      batteryParts(b).forEach(([label, value]) => facts.push("<li><span>".concat(label, "</span><strong>").concat(euro(value), "</strong></li>")));
-      facts.push("<li><span>Saldo ".concat(period).concat(b.unpriced > 0.05 ? " (zonder prijs voor een deel)" : "", "</span><strong>").concat(euro(b.withNetting), "</strong></li>"));
+      const parts = batteryParts(b);
+      parts.forEach(([label, value]) => facts.push("<li><span>".concat(label, "</span><strong>").concat(euro(value), "</strong></li>")));
+      facts.push("<li><span>Saldo ".concat(period).concat(b.unpriced > 0.05 ? " (zonder prijs voor een deel)" : "", "</span><strong>").concat(euro(partsTotal(parts)), "</strong></li>"));
     }
     $("batteryhistory-facts").innerHTML = facts.join("");
     const positive = [
@@ -1933,11 +1934,15 @@
     setText("batteryhistory-note", "Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.");
   }
   function batteryParts(b) {
-    const parts = [["Geladen van het net", -(b.gridCharge || 0)]];
-    if (b.solarCharge >= 5e-3) parts.push(["Geladen van de zon", -b.solarCharge]);
-    parts.push(["Ontladen naar huis", b.savedImport || 0]);
-    if (b.gridExport >= 5e-3) parts.push(["Ontladen naar het net", b.gridExport]);
+    const cents = (v) => Math.round((v || 0) * 100) / 100;
+    const parts = [["Geladen van het net", -cents(b.gridCharge)]];
+    if (b.solarCharge >= 5e-3) parts.push(["Misgelopen teruglevering", -cents(b.solarCharge)]);
+    parts.push(["Ontladen naar huis", cents(b.savedImport)]);
+    if (b.gridExport >= 5e-3) parts.push(["Ontladen naar het net", cents(b.gridExport)]);
     return parts;
+  }
+  function partsTotal(parts) {
+    return Math.round(parts.reduce((sum, [, v]) => sum + v * 100, 0)) / 100;
   }
   const SIZE_ORDER = ["small", "half", "large", "full"];
   const SIZE_SPANS = { small: 4, half: 6, large: 8, full: 12 };
@@ -2377,7 +2382,7 @@
       if (!b) return "";
       const parts = batteryParts(b);
       const sum = parts.map(([, v], i) => i ? "".concat(v < 0 ? "−" : "+", " ").concat(money(Math.abs(v))) : money(v)).join(" ");
-      return '<ul class="facts">'.concat(parts.map(([label, v]) => fact(label, money(v))).join("")).concat(fact("Saldo", "".concat(sum, " = ").concat(money(b.withNetting))), "</ul>");
+      return '<ul class="facts">'.concat(parts.map(([label, v]) => fact(label, money(v))).join("")).concat(fact("Saldo", "".concat(sum, " = ").concat(money(partsTotal(parts)))), "</ul>");
     }
     if (id === "batterysize") {
       const all = (_g = state.live) == null ? void 0 : _g.batterysize;

@@ -1019,6 +1019,7 @@
     "Naar huis": ["To home", "Ins Haus", "Til huset", "Till huset", "Til huset", "Verso casa", "Vers la maison", "Para casa", "A casa"],
     "Naar het net": ["To grid", "Ins Netz", "Til nettet", "Till nätet", "Til nettet", "Verso la rete", "Vers le réseau", "Para a rede", "A la red"],
     "Van de zon": ["From solar", "Von der Sonne", "Fra solen", "Från solen", "Fra solen", "Dal sole", "Du soleil", "Do sol", "Del sol"],
+    "Misgelopen teruglevering": ["Export missed", "Entgangene Einspeisung", "Tapt eksport", "Missad export", "Mistet eksport", "Immissione persa", "Injection manquée", "Exportação perdida", "Exportación perdida"],
     "Geladen van de zon": ["Charged from solar", "Mit Sonne geladen", "Ladet fra solen", "Laddat från solen", "Opladet fra solen", "Caricata dal sole", "Chargée par le soleil", "Carregada pelo sol", "Cargada con el sol"],
     "Geladen van het net": ["Charged from grid", "Aus dem Netz geladen", "Ladet fra nettet", "Laddat från nätet", "Opladet fra nettet", "Caricata dalla rete", "Chargée sur le réseau", "Carregada pela rede", "Cargada de la red"],
     "Ontladen naar huis": ["Discharged to home", "Ins Haus entladen", "Utladet til huset", "Urladdat till huset", "Afladet til huset", "Scaricata verso casa", "Déchargée vers la maison", "Descarregada para casa", "Descargada a casa"],
