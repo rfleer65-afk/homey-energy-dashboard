@@ -17,4 +17,11 @@ module.exports = {
   async clearNightImport({ homey }) {
     return homey.app.clearNightImport();
   },
+  // The showers measured with the shower button, and removing one
+  async getShowerLog({ homey }) {
+    return homey.app.getShowerLog();
+  },
+  async removeShower({ homey, body }) {
+    return homey.app.removeShower(body || {});
+  },
 };

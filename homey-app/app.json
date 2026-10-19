@@ -73,6 +73,14 @@
     "clearNightImport": {
       "method": "POST",
       "path": "/night-import/clear"
+    },
+    "getShowerLog": {
+      "method": "GET",
+      "path": "/shower-log"
+    },
+    "removeShower": {
+      "method": "POST",
+      "path": "/shower-log/remove"
     }
   },
   "widgets": {
@@ -231,5 +239,31 @@
       },
       "id": "groups"
     }
+  },
+  "flow": {
+    "actions": [
+      {
+        "title": {
+          "en": "Shower started",
+          "nl": "Douche gestart"
+        },
+        "hint": {
+          "en": "Only used when calibrating the shower minutes is turned on in the app settings. Run it when the shower is turned on.",
+          "nl": "Alleen in gebruik als het ijken van de doucheminuten aanstaat in de app-instellingen. Voer het uit als de douche aangaat."
+        },
+        "id": "shower-start"
+      },
+      {
+        "title": {
+          "en": "Shower finished",
+          "nl": "Douche klaar"
+        },
+        "hint": {
+          "en": "Only used when calibrating the shower minutes is turned on in the app settings. Run it when the shower is turned off.",
+          "nl": "Alleen in gebruik als het ijken van de doucheminuten aanstaat in de app-instellingen. Voer het uit als de douche uitgaat."
+        },
+        "id": "shower-stop"
+      }
+    ]
   }
 }

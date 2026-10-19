@@ -1108,6 +1108,19 @@
     [/^Terugkijken · (.+)$/, ["Looking back · $1", "Rückblick · $1", "Ser tilbake · $1", "Tittar tillbaka · $1", "Ser tilbage · $1", "Indietro nel tempo · $1", "Retour en arrière · $1", "A rever · $1", "Revisando · $1"]],
     [/^kWh = vandaag · (.+)$/, ["kWh = today · $1", "kWh = heute · $1", "kWh = i dag · $1", "kWh = idag · $1", "kWh = i dag · $1", "kWh = oggi · $1", "kWh = aujourd'hui · $1", "kWh = hoje · $1", "kWh = hoy · $1"]],
     [/^bijgewerkt (.+)$/, ["updated $1", "aktualisiert $1", "oppdatert $1", "uppdaterad $1", "opdateret $1", "aggiornato $1", "mis à jour $1", "atualizado $1", "actualizado $1"]],
+    [/^Ijken met de douchetoets: (\d+) metingen gelukt\.$/, ["Calibrating with the shower button: $1 measurements succeeded.", "Kalibrierung mit dem Duschtaster: $1 Messungen erfolgreich.", "Kalibrering med dusjknappen: $1 målinger vellykket.", "Kalibrering med duschknappen: $1 mätningar lyckades.", "Kalibrering med brusetasten: $1 målinger lykkedes.", "Calibrazione con il pulsante della doccia: $1 misure riuscite.", "Étalonnage avec le bouton de douche : $1 mesures réussies.", "Calibração com o botão do duche: $1 medições concluídas.", "Calibración con el botón de la ducha: $1 mediciones logradas."]],
+    [/^Ijken met de douchetoets: (\d+) van de (\d+) metingen gelukt\.$/, ["Calibrating with the shower button: $1 of $2 measurements succeeded.", "Kalibrierung mit dem Duschtaster: $1 von $2 Messungen erfolgreich.", "Kalibrering med dusjknappen: $1 av $2 målinger vellykket.", "Kalibrering med duschknappen: $1 av $2 mätningar lyckades.", "Kalibrering med brusetasten: $1 af $2 målinger lykkedes.", "Calibrazione con il pulsante della doccia: $1 misure riuscite su $2.", "Étalonnage avec le bouton de douche : $1 mesures réussies sur $2.", "Calibração com o botão do duche: $1 de $2 medições concluídas.", "Calibración con el botón de la ducha: $1 de $2 mediciones logradas."]],
+    [/^Doucheminuten zijn geijkt: (.+) L boiler, douchen op (.+) °C met (.+) L\/min \(gemeten bij (\d+) douches\)\.$/, [
+      "Shower minutes are calibrated: $1 L tank, showering at $2 °C with $3 L/min (measured over $4 showers).",
+      "Duschminuten sind kalibriert: $1 L Speicher, Duschen bei $2 °C mit $3 L/min (gemessen bei $4 Duschen).",
+      "Dusjminutter er kalibrert: $1 L bereder, dusj på $2 °C med $3 L/min (målt på $4 dusjer).",
+      "Duschminuter är kalibrerade: $1 L beredare, dusch på $2 °C med $3 L/min (uppmätt vid $4 duschar).",
+      "Bruseminutter er kalibreret: $1 L beholder, brusebad på $2 °C med $3 L/min (målt ved $4 brusebade).",
+      "I minuti di doccia sono calibrati: scaldabagno da $1 L, doccia a $2 °C con $3 L/min (misurati su $4 docce).",
+      "Les minutes de douche sont étalonnées : ballon de $1 L, douche à $2 °C avec $3 L/min (mesuré sur $4 douches).",
+      "Os minutos de duche estão calibrados: depósito de $1 L, duche a $2 °C com $3 L/min (medido em $4 duches).",
+      "Los minutos de ducha están calibrados: depósito de $1 L, ducha a $2 °C con $3 L/min (medido en $4 duchas)."
+    ]],
     [/^Doucheminuten zijn een schatting: (.+) L boiler, douchen op (.+) °C met (.+) L\/min\.$/, [
       "Shower minutes are an estimate: $1 L tank, showering at $2 °C with $3 L/min.",
       "Duschminuten sind eine Schätzung: $1 L Speicher, Duschen bei $2 °C mit $3 L/min.",

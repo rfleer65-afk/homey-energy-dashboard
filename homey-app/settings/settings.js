@@ -4,7 +4,7 @@
 
 const BOILER_FIELDS = ['liters', 'coldWaterTemp', 'showerTemp', 'showerFlow', 'warmFrom'];
 const BOILER_SENSORS = ['topSensor', 'bottomSensor'];
-const DEFAULT_BOILER = { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '' };
+const DEFAULT_BOILER = { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '', calibrate: false };
 
 function onHomeyReady(Homey) {
   const form = document.getElementById('settings-form');
@@ -110,6 +110,7 @@ function onHomeyReady(Homey) {
 
       const boiler = { ...DEFAULT_BOILER, ...config.boiler };
       BOILER_FIELDS.forEach(key => { form[key].value = key === 'coldWaterTemp' && boiler[key] === 10 ? '' : boiler[key] ?? ''; });
+      form.calibrate.checked = Boolean(boiler.calibrate);
       const fillSensors = () => {
         const id = form.boiler.value || list.found.boiler;
         const temps = list.devices.find(d => d.id === id)?.temps || [];
@@ -160,6 +161,7 @@ function onHomeyReady(Homey) {
         boiler: {
           ...Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
           ...Object.fromEntries(BOILER_SENSORS.map(key => [key, form[key].value])),
+          calibrate: form.calibrate.checked,
         },
       };
       if (config.boiler.showerTemp <= (config.boiler.coldWaterTemp ?? 17)) {
@@ -704,6 +706,32 @@ function onHomeyReady(Homey) {
     showImport();
   };
   showImport();
+
+  // ---------- Showers measured with the shower button ----------
+
+  // Shown while the calibration is on; a wrong shower (a bath filling, a long tap) can be removed
+  const showerLog = document.getElementById('shower-log');
+  async function showShowers() {
+    showerLog.hidden = !form.calibrate.checked;
+    if (showerLog.hidden) return;
+    const { samples } = await call('GET', '/shower-log').catch(() => ({ samples: [] }));
+    const list = samples.slice().reverse();
+    showerLog.innerHTML = `<p class="muted">${escapeText(list.length ? __('showersTitle', { count: list.length }) : __('showersNone'))}</p>`
+      + list.map(s => {
+        const when = new Date(s.at).toLocaleString(document.documentElement.lang || undefined, { dateStyle: 'short', timeStyle: 'short' });
+        const how = s.source === 'water' ? __('showerByWater', { liters: s.liters }) : __('showerByTemperature', { drop: s.drop });
+        return `<p class="shower-row"><span>${escapeText(__('showerRow', { when, flow: s.flow, minutes: s.minutes, how }))}</span>`
+          + `<button type="button" class="secondary" data-remove="${s.at}">${escapeText(__('showerRemove'))}</button></p>`;
+      }).join('');
+  }
+  showerLog.onclick = async event => {
+    const at = event.target.dataset?.remove;
+    if (!at) return;
+    await call('POST', '/shower-log/remove', { at: Number(at) }).catch(() => null);
+    showShowers();
+  };
+  form.calibrate.addEventListener('change', showShowers);
+  showShowers();
 
   // ---------- Share diagnosis ----------
 

@@ -72,6 +72,14 @@
     "clearNightImport": {
       "method": "POST",
       "path": "/night-import/clear"
+    },
+    "getShowerLog": {
+      "method": "GET",
+      "path": "/shower-log"
+    },
+    "removeShower": {
+      "method": "POST",
+      "path": "/shower-log/remove"
     }
   }
 }

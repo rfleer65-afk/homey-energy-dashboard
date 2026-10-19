@@ -9,7 +9,7 @@ const {
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
   expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy, consumerStatus,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
-  mergeNights, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals, batteryDirection,
+  mergeNights, tankReading, showerSample, measuredFlow, withoutShower, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals, batteryDirection,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -59,7 +59,7 @@ const OLD_PORT = 8080;
 const DEFAULTS = {
   port: 8686,
   devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '', count: {} },
-  boiler: { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '' },
+  boiler: { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '', calibrate: false },
   battery: { invertPower: false },
   grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
   prices: { source: 'auto' },
@@ -139,6 +139,10 @@ class EnergyDashboardApp extends Homey.App {
     this.notified = new Map();
     this.homey.setInterval(() => this.checkAlerts().catch(err => this.error(`Alerts: ${err.message}`)), 60 * 1000);
 
+    // Opt-in: a button in the shower marks the start and the end, which calibrates the shower head
+    this.homey.flow.getActionCard('shower-start').registerRunListener(() => this.showerStart());
+    this.homey.flow.getActionCard('shower-stop').registerRunListener(() => this.showerStop());
+
     // A tag per group in the fuse box (load in % of its fuse, and watts), for Flows
     this.groupTokens = new Map();
     this.homey.setInterval(() => this.updateGroupTokens().catch(err => this.error(`Group tags: ${err.message}`)), 30 * 1000);
@@ -194,7 +198,7 @@ class EnergyDashboardApp extends Homey.App {
     return {
       port: Number(saved.port) || DEFAULTS.port,
       devices: { ...DEFAULTS.devices, ...saved.devices },
-      boiler: { ...DEFAULTS.boiler, ...saved.boiler },
+      boiler: this.boilerConfig(saved.boiler),
       battery: { ...DEFAULTS.battery, ...saved.battery },
       grid: { ...DEFAULTS.grid, ...saved.grid },
       prices,
@@ -699,6 +703,8 @@ class EnergyDashboardApp extends Homey.App {
     const [route, query = ''] = String(path || '').split('?');
     if (method === 'GET' && route === '/settings-info') return this.getSettingsInfo();
     if (method === 'GET' && route === '/diagnosis-report') return this.getDiagnosisReport({ snapshot: /(^|&)snapshot=1(&|$)/.test(query) });
+    if (method === 'GET' && route === '/shower-log') return this.getShowerLog();
+    if (method === 'POST' && route === '/shower-log/remove') return this.removeShower(body || {});
     if (method === 'POST' && route === '/night-import') return this.importNightsPart(body || {});
     if (method === 'POST' && route === '/night-import/clear') return this.clearNightImport();
     throw Object.assign(new Error('Onbekend'), { status: 404 });
@@ -720,6 +726,53 @@ class EnergyDashboardApp extends Homey.App {
       hours: Number(cfg.alerts.hours) || 4,
       lang,
     });
+  }
+
+  // The boiler settings, with the flow measured by the shower button once calibration is on
+  boilerConfig(saved) {
+    const boiler = { ...DEFAULTS.boiler, ...saved };
+    if (!boiler.calibrate) return boiler;
+    const samples = this.homey.settings.get('showerLog')?.samples || [];
+    return { ...boiler, measuredFlow: measuredFlow(samples), measuredShowers: Math.min(samples.length, 10) };
+  }
+
+  // The measured showers for the settings page, and removing one that went wrong
+  getShowerLog() {
+    return { samples: this.homey.settings.get('showerLog')?.samples || [] };
+  }
+
+  removeShower({ at } = {}) {
+    const log = this.homey.settings.get('showerLog') || {};
+    this.homey.settings.set('showerLog', { ...log, samples: withoutShower(log.samples, Number(at)) });
+    return this.getShowerLog();
+  }
+
+  async readTank() {
+    const cfg = this.getConfig();
+    const found = discover(await this.getDevices(), cfg.devices);
+    const reading = tankReading(found.boiler, cfg.boiler, found.water);
+    return reading && { ...reading, at: Date.now() };
+  }
+
+  // "Shower started": remember the tank now. Does nothing while calibration is off.
+  async showerStart() {
+    if (!this.getConfig().boiler.calibrate) return true;
+    const reading = await this.readTank();
+    const log = this.homey.settings.get('showerLog') || {};
+    this.homey.settings.set('showerLog', { ...log, pending: reading || null });
+    return true;
+  }
+
+  // "Shower finished": the drop since the start gives the flow of the shower head
+  async showerStop() {
+    const cfg = this.getConfig();
+    if (!cfg.boiler.calibrate) return true;
+    const log = this.homey.settings.get('showerLog') || {};
+    const end = await this.readTank();
+    const sample = showerSample(log.pending, end, cfg.boiler);
+    this.log(sample ? `Shower measured: ${sample.flow} L/min` : 'Shower not used for calibration');
+    this.homey.settings.set('showerLog', { samples: [...(log.samples || []), ...(sample ? [sample] : [])].slice(-20) });
+    return true;
   }
 
   // Tracks the devices, and sends new warnings to the Homey timeline when that is turned on

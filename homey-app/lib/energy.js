@@ -619,12 +619,87 @@ function boilerStatus(temperature, cfg) {
   return 'cold';
 }
 
-function assumptions({ liters, showerTemp, showerFlow, warmFrom }) {
-  return { liters, showerTemp, showerFlow, warmFrom };
+function assumptions({ liters, showerTemp, showerFlow, warmFrom, measuredFlow, measuredShowers, calibrate }) {
+  return {
+    liters, showerTemp, showerFlow, warmFrom,
+    measured: measuredFlow ? measuredShowers : 0,
+    // How far the calibration is, for the note below the boiler (null while it is off)
+    calibration: calibrate ? { count: measuredShowers || 0, needed: SHOWER_NEEDED } : null,
+  };
 }
 
-function buildBoiler(device, cfg) {
+// Calibration with a shower button (opt-in): a Flow marks the start and the end of a shower, and
+// the drop of the tank temperature in that time gives the real flow of the shower head. The model
+// loses (showerTemp - cold) * flow / liters degrees of tank average per minute, so
+// flow = liters * drop / ((showerTemp - cold) * minutes), for one sensor and for two.
+const SHOWER_MIN_MINUTES = 2;
+const SHOWER_MAX_MINUTES = 30;
+const SHOWER_MIN_DROP = 3;
+const SHOWER_FLOW_RANGE = [3, 20];
+const SHOWER_KEEP = 10;
+const SHOWER_NEEDED = 3;
+
+// The saved showers without the one at `at`
+function withoutShower(samples, at) {
+  return (samples || []).filter(s => s.at !== at);
+}
+
+// The tank average of a boiler device now, as the model sees it, whether it is heating, and the
+// water meter (when there is one) in liters
+function tankReading(device, cfg, water = null) {
   if (!device) return null;
+  const sensors = tankSensors(device, cfg);
+  const top = sensors.top ? value(device, sensors.top) : null;
+  if (typeof top !== 'number') return null;
+  const bottom = sensors.bottom ? value(device, sensors.bottom) : null;
+  const m3 = water ? value(water, 'meter_water') : null;
+  return {
+    average: tankAverage(top, typeof bottom === 'number' ? bottom : null),
+    heating: value(device, 'lydos_heating') === true,
+    liters: typeof m3 === 'number' ? m3 * 1000 : null,
+  };
+}
+
+// One shower from two readings. Returns the flow in L/min, or null when the shower cannot be
+// trusted. With a water meter the liters used in that time are the flow itself (the meter must show
+// a plausible amount: its steps can be coarse, and a flush or tap adds a little). Without one, or
+// when that amount is implausible, the temperature drop is used: not when the drop is too small for
+// the sensor, or the boiler was heating in between.
+const SHOWER_WATER_RANGE = [10, 400];
+function showerSample(start, end, cfg, now = new Date()) {
+  if (!start || !end) return null;
+  const minutes = (end.at - start.at) / 60000;
+  if (minutes < SHOWER_MIN_MINUTES || minutes > SHOWER_MAX_MINUTES) return null;
+  const used = end.liters - start.liters;
+  if (used >= SHOWER_WATER_RANGE[0] && used <= SHOWER_WATER_RANGE[1]) {
+    const flow = used / minutes;
+    if (flow >= SHOWER_FLOW_RANGE[0] && flow <= SHOWER_FLOW_RANGE[1]) {
+      return { at: end.at, minutes: Math.round(minutes * 10) / 10, liters: Math.round(used), flow: Math.round(flow * 10) / 10, source: 'water' };
+    }
+  }
+  if (start.heating || end.heating) return null;
+  const drop = start.average - end.average;
+  if (drop < SHOWER_MIN_DROP) return null;
+  const span = cfg.showerTemp - coldWater(cfg, now);
+  if (span <= 0) return null;
+  const flow = cfg.liters * drop / (span * minutes);
+  if (flow < SHOWER_FLOW_RANGE[0] || flow > SHOWER_FLOW_RANGE[1]) return null;
+  return { at: end.at, minutes: Math.round(minutes * 10) / 10, drop: Math.round(drop * 10) / 10, flow: Math.round(flow * 10) / 10, source: 'temperature' };
+}
+
+// The measured flow: the median of the latest showers, once there are enough of them
+function measuredFlow(samples) {
+  const flows = (samples || []).slice(-SHOWER_KEEP).map(s => s.flow).filter(f => typeof f === 'number').sort((a, b) => a - b);
+  if (flows.length < SHOWER_NEEDED) return null;
+  const mid = flows.length >> 1;
+  return Math.round((flows.length % 2 ? flows[mid] : (flows[mid - 1] + flows[mid]) / 2) * 10) / 10;
+}
+
+function buildBoiler(device, boilerCfg) {
+  if (!device) return null;
+  // With the calibration on and enough showers measured, the measured flow replaces the entered one
+  const calibrated = Boolean(boilerCfg.calibrate && boilerCfg.measuredFlow);
+  const cfg = calibrated ? { ...boilerCfg, showerFlow: boilerCfg.measuredFlow } : boilerCfg;
   const sensors = tankSensors(device, cfg);
   const top = sensors.top ? value(device, sensors.top) : null;
   const bottom = sensors.bottom ? value(device, sensors.bottom) : null;
@@ -643,7 +718,7 @@ function buildBoiler(device, cfg) {
     bottom: layered && typeof bottom === 'number' ? bottom : null,
     minutes: layered ? layeredShowerMinutes(top, bottom, cfg) : showerMinutes(temperature, cfg),
     status: boilerStatus(temperature, cfg),
-    assumptions: assumptions(cfg),
+    assumptions: assumptions({ ...cfg, measuredFlow: calibrated ? cfg.showerFlow : null }),
   };
 }
 
@@ -3122,6 +3197,10 @@ module.exports = {
   summarize,
   showerMinutes,
   layeredShowerMinutes,
+  tankReading,
+  showerSample,
+  measuredFlow,
+  withoutShower,
   tankSensors,
   buildBoiler,
   boilerStatus,

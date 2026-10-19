@@ -605,7 +605,18 @@
     if (heating) heating.innerHTML = boiler.heating ? '<span class="heating-dot"></span>Ja' : 'Nee';
 
     const a = boiler.assumptions;
-    setText('boiler-note', `Doucheminuten zijn een schatting: ${a.liters} L boiler, douchen op ${a.showerTemp} °C met ${a.showerFlow} L/min.`);
+    setText('boiler-note', a.measured
+      ? `Doucheminuten zijn geijkt: ${a.liters} L boiler, douchen op ${a.showerTemp} °C met ${a.showerFlow} L/min (gemeten bij ${a.measured} douches).`
+      : `Doucheminuten zijn een schatting: ${a.liters} L boiler, douchen op ${a.showerTemp} °C met ${a.showerFlow} L/min.`);
+    const calibration = $('boiler-calibration');
+    if (calibration) {
+      calibration.hidden = !a.calibration;
+      if (a.calibration) {
+        setText('boiler-calibration', a.calibration.count >= a.calibration.needed
+          ? `Ijken met de douchetoets: ${a.calibration.count} metingen gelukt.`
+          : `Ijken met de douchetoets: ${a.calibration.count} van de ${a.calibration.needed} metingen gelukt.`);
+      }
+    }
     renderBoilerHistory(state.history?.boilerTemperature, a);
   }
 
