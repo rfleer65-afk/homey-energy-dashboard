@@ -730,7 +730,7 @@
     }
     const earnings = history == null ? void 0 : history.batteryEarnings;
     if (earnings) {
-      facts.push("<li><span>Opbrengst ".concat(period, "</span><strong>").concat(euro(earnings.withNetting), "</strong></li>"));
+      facts.push("<li><span>Saldo ".concat(period, "</span><strong>").concat(euro(earnings.withNetting), "</strong></li>"));
       if (Math.abs(earnings.withoutNetting - earnings.withNetting) >= 0.01) {
         facts.push("<li><span>Zonder salderen (vanaf 2027)</span><strong>".concat(euro(earnings.withoutNetting), "</strong></li>"));
       }
@@ -1898,12 +1898,11 @@
       "<li><span>Geladen ".concat(period, "</span><strong>").concat(formatEnergy(t.charge), " kWh</strong></li>"),
       "<li><span>Ontladen ".concat(period, "</span><strong>").concat(formatEnergy(t.discharge), " kWh</strong></li>")
     ];
-    if (typeof info.chargePrice === "number") facts.push("<li><span>Laden kostte gemiddeld</span><strong>".concat(euro(info.chargePrice, 3), " per kWh</strong></li>"));
-    if (typeof info.dischargePrice === "number") facts.push("<li><span>Ontladen bespaarde gemiddeld</span><strong>".concat(euro(info.dischargePrice, 3), " per kWh</strong></li>"));
-    if (typeof info.chargePrice === "number" && typeof info.dischargePrice === "number") {
-      facts.push("<li><span>Verschil per kWh</span><strong>".concat(euro(info.dischargePrice - info.chargePrice, 3), "</strong></li>"));
+    const b = history.batteryEarnings;
+    if (b) {
+      batteryParts(b).forEach(([label, value]) => facts.push("<li><span>".concat(label, "</span><strong>").concat(euro(value), "</strong></li>")));
+      facts.push("<li><span>Saldo ".concat(period).concat(b.unpriced > 0.05 ? " (zonder prijs voor een deel)" : "", "</span><strong>").concat(euro(b.withNetting), "</strong></li>"));
     }
-    if (history.batteryEarnings) facts.push("<li><span>Opbrengst ".concat(period, "</span><strong>").concat(euro(history.batteryEarnings.withNetting), "</strong></li>"));
     $("batteryhistory-facts").innerHTML = facts.join("");
     const positive = [
       { key: "batteryToHome", label: "Naar huis", color: css("--battery") },
@@ -1925,6 +1924,13 @@
       return "<li><span><b>".concat(hm(s.start), "–").concat(hm(s.end), "</b> <em>").concat(what, "</em></span><strong>").concat(formatEnergy(s.kWh), " kWh").concat(price, "</strong></li>");
     }).join("");
     setText("batteryhistory-note", "Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.");
+  }
+  function batteryParts(b) {
+    const parts = [["Geladen van het net", -(b.gridCharge || 0)]];
+    if (b.solarCharge >= 5e-3) parts.push(["Geladen van de zon", -b.solarCharge]);
+    parts.push(["Ontladen naar huis", b.savedImport || 0]);
+    if (b.gridExport >= 5e-3) parts.push(["Ontladen naar het net", b.gridExport]);
+    return parts;
   }
   const SIZE_ORDER = ["small", "half", "large", "full"];
   const SIZE_SPANS = { small: 4, half: 6, large: 8, full: 12 };
@@ -2266,8 +2272,8 @@
     waterheater: "De temperatuur van je boiler. De doucheminuten zijn een schatting uit de inhoud, de temperatuur van het koude water, je douchetemperatuur en je douchekop (bij de instellingen).",
     heating: "Kamertemperatuur van je thermostaat, en wat je warmtepomp of cv-ketel doet. Stroom komt van de meting van het toestel, gas van je slimme meter (het hele huis). Gas per graaddag corrigeert voor het weer.",
     ev: "Vermogen en status van je laadpaal, de geladen kWh in de gekozen periode uit Homey Insights, en de kWh van de laadsessie als de app van je laadpaal die bijhoudt.",
-    battery: "Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. De opbrengst is wat ontladen bespaarde min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep.",
-    batteryhistory: "Wat de batterij laadde (van zon of net) en leverde (aan huis of net). Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.",
+    battery: "Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. Het saldo is wat ontladen bespaarde of opbracht min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep. Energie die aan het begin of eind van de periode nog in de batterij zit, telt niet mee.",
+    batteryhistory: "Wat de batterij laadde (van zon of net) en leverde (aan huis of net), en wat dat kostte en opleverde. Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Het saldo telt energie die aan het begin of eind van de periode nog in de batterij zit niet mee, dus op één dag valt het vaak lager uit dan over een maand. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.",
     tiles: "De totalen van de gekozen periode uit de meterstanden in Homey Insights, vergeleken met de vorige periode tot hetzelfde moment. Zelfvoorzienend is het deel van je verbruik uit zon en batterij.",
     prices: "De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur. Net kost nu: wat je afname van dit moment per uur kost, met een min ervoor als je teruglevert.",
     gauges: "Zelfvoorzienend: deel van je verbruik uit zon en batterij. Eigen zon gebruikt: deel van je zonnestroom dat je zelf gebruikte. Netto: afname min teruglevering.",
@@ -2357,18 +2363,14 @@
     if (id === "battery") {
       const b = (_e = state.history) == null ? void 0 : _e.batteryEarnings;
       if (!b) return "";
-      return '<ul class="facts">'.concat(fact("Ontladen", "".concat(formatEnergy(b.discharged), " kWh"))).concat(fact("Geladen", "".concat(formatEnergy(b.charged), " kWh"))).concat(fact("Opbrengst", money(b.withNetting)), "</ul>");
+      return '<ul class="facts">'.concat(fact("Ontladen", "".concat(formatEnergy(b.discharged), " kWh"))).concat(fact("Geladen", "".concat(formatEnergy(b.charged), " kWh"))).concat(fact("Saldo", money(b.withNetting)), "</ul>");
     }
     if (id === "batteryhistory") {
-      const h = (_f = state.history) == null ? void 0 : _f.batteryHistory;
-      if (!h || !t) return "";
-      const rows = [];
-      const out = typeof h.dischargePrice === "number" ? t.discharge * h.dischargePrice : null;
-      const inn = typeof h.chargePrice === "number" ? t.charge * h.chargePrice : null;
-      if (out !== null) rows.push(fact("Ontladen", times(formatEnergy(t.discharge), "kWh", h.dischargePrice, out)));
-      if (inn !== null) rows.push(fact("Geladen", times(formatEnergy(t.charge), "kWh", h.chargePrice, inn)));
-      if (out !== null && inn !== null) rows.push(fact("Opbrengst", "".concat(money(out), " − ").concat(money(inn), " ≈ ").concat(money(out - inn))));
-      return rows.length ? '<ul class="facts">'.concat(rows.join(""), "</ul>") : "";
+      const b = (_f = state.history) == null ? void 0 : _f.batteryEarnings;
+      if (!b) return "";
+      const parts = batteryParts(b);
+      const sum = parts.map(([, v], i) => i ? "".concat(v < 0 ? "−" : "+", " ").concat(money(Math.abs(v))) : money(v)).join(" ");
+      return '<ul class="facts">'.concat(parts.map(([label, v]) => fact(label, money(v))).join("")).concat(fact("Saldo", "".concat(sum, " = ").concat(money(b.withNetting))), "</ul>");
     }
     if (id === "batterysize") {
       const all = (_g = state.live) == null ? void 0 : _g.batterysize;

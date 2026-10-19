@@ -43,6 +43,10 @@
       let height = 0;
       let ready = false;
 
+      // The load in amps or in watts (widget setting), watts against what the fuse allows
+      const load = g => (settings.unit === 'W'
+        ? `${power(g.watts)} <small class="muted">/ ${power(g.fuseAmps * 230 * Math.max(1, g.phases.length))}</small>`
+        : `${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small>`);
       const row = g => {
         const share = g.amps / g.fuseAmps;
         const tag = g.phases.length > 1 ? ` <small class="muted">${g.phases.map(n => `L${n}`).join('+')}</small>` : '';
@@ -50,7 +54,7 @@
           ? g.on.map(d => `${escape(d.name)} ${d.estimated ? '≈' : ''}${power(d.watts)}`).join(' · ')
           : '';
         return `<li>
-          <div class="row"><span>${escape(g.name)}${tag}</span><strong>${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small></strong></div>
+          <div class="row"><span>${escape(g.name)}${tag}</span><strong>${load(g)}</strong></div>
           <div class="bar"><i style="width:${Math.min(100, Math.max(2, share * 100))}%;background:${color(share)}"></i></div>
           ${on ? `<small class="muted devices">${on}</small>` : ''}
         </li>`;

@@ -923,10 +923,11 @@
         facts.push(`<li><span>Geladen met zon</span><strong>${formatPercent(Math.min(1, (t.solarToBattery || 0) / t.charge))}%</strong></li>`);
       }
     }
-    // What the battery earned: saved import minus what charging cost (or the export it missed)
+    // The balance: saved import and export earned minus what charging cost (or the export it
+    // missed). Energy still in the battery is not valued, so it is not called earnings (GitHub #20).
     const earnings = history?.batteryEarnings;
     if (earnings) {
-      facts.push(`<li><span>Opbrengst ${period}</span><strong>${euro(earnings.withNetting)}</strong></li>`);
+      facts.push(`<li><span>Saldo ${period}</span><strong>${euro(earnings.withNetting)}</strong></li>`);
       if (Math.abs(earnings.withoutNetting - earnings.withNetting) >= 0.01) {
         facts.push(`<li><span>Zonder salderen (vanaf 2027)</span><strong>${euro(earnings.withoutNetting)}</strong></li>`);
       }
@@ -2323,12 +2324,12 @@
       `<li><span>Geladen ${period}</span><strong>${formatEnergy(t.charge)} kWh</strong></li>`,
       `<li><span>Ontladen ${period}</span><strong>${formatEnergy(t.discharge)} kWh</strong></li>`,
     ];
-    if (typeof info.chargePrice === 'number') facts.push(`<li><span>Laden kostte gemiddeld</span><strong>${euro(info.chargePrice, 3)} per kWh</strong></li>`);
-    if (typeof info.dischargePrice === 'number') facts.push(`<li><span>Ontladen bespaarde gemiddeld</span><strong>${euro(info.dischargePrice, 3)} per kWh</strong></li>`);
-    if (typeof info.chargePrice === 'number' && typeof info.dischargePrice === 'number') {
-      facts.push(`<li><span>Verschil per kWh</span><strong>${euro(info.dischargePrice - info.chargePrice, 3)}</strong></li>`);
+    // What charging cost and what discharging saved or earned, apart, then the balance
+    const b = history.batteryEarnings;
+    if (b) {
+      batteryParts(b).forEach(([label, value]) => facts.push(`<li><span>${label}</span><strong>${euro(value)}</strong></li>`));
+      facts.push(`<li><span>Saldo ${period}${b.unpriced > 0.05 ? ' (zonder prijs voor een deel)' : ''}</span><strong>${euro(b.withNetting)}</strong></li>`);
     }
-    if (history.batteryEarnings) facts.push(`<li><span>Opbrengst ${period}</span><strong>${euro(history.batteryEarnings.withNetting)}</strong></li>`);
     $('batteryhistory-facts').innerHTML = facts.join('');
 
     const positive = [
@@ -2355,6 +2356,16 @@
       return `<li><span><b>${hm(s.start)}–${hm(s.end)}</b> <em>${what}</em></span><strong>${formatEnergy(s.kWh)} kWh${price}</strong></li>`;
     }).join('');
     setText('batteryhistory-note', 'Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.');
+  }
+
+  // The money parts of the battery balance: costs negative, savings and export positive. The
+  // solar and export parts only when there are any, to keep the block short.
+  function batteryParts(b) {
+    const parts = [['Geladen van het net', -(b.gridCharge || 0)]];
+    if (b.solarCharge >= 0.005) parts.push(['Geladen van de zon', -b.solarCharge]);
+    parts.push(['Ontladen naar huis', b.savedImport || 0]);
+    if (b.gridExport >= 0.005) parts.push(['Ontladen naar het net', b.gridExport]);
+    return parts;
   }
 
   // ---------- Edit mode ----------
@@ -2730,8 +2741,8 @@
     waterheater: 'De temperatuur van je boiler. De doucheminuten zijn een schatting uit de inhoud, de temperatuur van het koude water, je douchetemperatuur en je douchekop (bij de instellingen).',
     heating: 'Kamertemperatuur van je thermostaat, en wat je warmtepomp of cv-ketel doet. Stroom komt van de meting van het toestel, gas van je slimme meter (het hele huis). Gas per graaddag corrigeert voor het weer.',
     ev: 'Vermogen en status van je laadpaal, de geladen kWh in de gekozen periode uit Homey Insights, en de kWh van de laadsessie als de app van je laadpaal die bijhoudt.',
-    battery: 'Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. De opbrengst is wat ontladen bespaarde min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep.',
-    batteryhistory: 'Wat de batterij laadde (van zon of net) en leverde (aan huis of net). Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.',
+    battery: 'Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. Het saldo is wat ontladen bespaarde of opbracht min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep. Energie die aan het begin of eind van de periode nog in de batterij zit, telt niet mee.',
+    batteryhistory: 'Wat de batterij laadde (van zon of net) en leverde (aan huis of net), en wat dat kostte en opleverde. Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Het saldo telt energie die aan het begin of eind van de periode nog in de batterij zit niet mee, dus op één dag valt het vaak lager uit dan over een maand. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.',
     tiles: 'De totalen van de gekozen periode uit de meterstanden in Homey Insights, vergeleken met de vorige periode tot hetzelfde moment. Zelfvoorzienend is het deel van je verbruik uit zon en batterij.',
     prices: 'De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur. Net kost nu: wat je afname van dit moment per uur kost, met een min ervoor als je teruglevert.',
     gauges: 'Zelfvoorzienend: deel van je verbruik uit zon en batterij. Eigen zon gebruikt: deel van je zonnestroom dat je zelf gebruikte. Netto: afname min teruglevering.',
@@ -2832,18 +2843,14 @@
     if (id === 'battery') {
       const b = state.history?.batteryEarnings;
       if (!b) return '';
-      return `<ul class="facts">${fact('Ontladen', `${formatEnergy(b.discharged)} kWh`)}${fact('Geladen', `${formatEnergy(b.charged)} kWh`)}${fact('Opbrengst', money(b.withNetting))}</ul>`;
+      return `<ul class="facts">${fact('Ontladen', `${formatEnergy(b.discharged)} kWh`)}${fact('Geladen', `${formatEnergy(b.charged)} kWh`)}${fact('Saldo', money(b.withNetting))}</ul>`;
     }
     if (id === 'batteryhistory') {
-      const h = state.history?.batteryHistory;
-      if (!h || !t) return '';
-      const rows = [];
-      const out = typeof h.dischargePrice === 'number' ? t.discharge * h.dischargePrice : null;
-      const inn = typeof h.chargePrice === 'number' ? t.charge * h.chargePrice : null;
-      if (out !== null) rows.push(fact('Ontladen', times(formatEnergy(t.discharge), 'kWh', h.dischargePrice, out)));
-      if (inn !== null) rows.push(fact('Geladen', times(formatEnergy(t.charge), 'kWh', h.chargePrice, inn)));
-      if (out !== null && inn !== null) rows.push(fact('Opbrengst', `${money(out)} − ${money(inn)} ≈ ${money(out - inn)}`));
-      return rows.length ? `<ul class="facts">${rows.join('')}</ul>` : '';
+      const b = state.history?.batteryEarnings;
+      if (!b) return '';
+      const parts = batteryParts(b);
+      const sum = parts.map(([, v], i) => (i ? `${v < 0 ? '−' : '+'} ${money(Math.abs(v))}` : money(v))).join(' ');
+      return `<ul class="facts">${parts.map(([label, v]) => fact(label, money(v))).join('')}${fact('Saldo', `${sum} = ${money(b.withNetting)}`)}</ul>`;
     }
     if (id === 'batterysize') {
       const all = state.live?.batterysize;

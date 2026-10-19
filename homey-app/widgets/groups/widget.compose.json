@@ -16,6 +16,31 @@
       "value": true
     },
     {
+      "id": "unit",
+      "type": "dropdown",
+      "title": {
+        "en": "Load in",
+        "nl": "Belasting in"
+      },
+      "value": "A",
+      "values": [
+        {
+          "id": "A",
+          "title": {
+            "en": "Amps",
+            "nl": "Ampère"
+          }
+        },
+        {
+          "id": "W",
+          "title": {
+            "en": "Watts",
+            "nl": "Watt"
+          }
+        }
+      ]
+    },
+    {
       "id": "devices",
       "type": "checkbox",
       "title": {
