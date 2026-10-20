@@ -939,6 +939,7 @@
     const earnings = history?.batteryEarnings;
     if (earnings) {
       facts.push(`<li><span>Saldo ${period}</span><strong>${euro(partsTotal(batteryParts(earnings)))}</strong></li>`);
+      facts.push(...batteryDoubts(earnings));
       if (Math.abs(earnings.withoutNetting - earnings.withNetting) >= 0.01) {
         facts.push(`<li><span>Zonder salderen (vanaf 2027)</span><strong>${euro(earnings.withoutNetting)}</strong></li>`);
       }
@@ -2341,6 +2342,7 @@
       const parts = batteryParts(b);
       parts.forEach(([label, value]) => facts.push(`<li><span>${label}</span><strong>${euro(value)}</strong></li>`));
       facts.push(`<li><span>Saldo ${period}${b.unpriced > 0.05 ? ' (zonder prijs voor een deel)' : ''}</span><strong>${euro(partsTotal(parts))}</strong></li>`);
+      facts.push(...batteryDoubts(b));
     }
     $('batteryhistory-facts').innerHTML = facts.join('');
 
@@ -2367,7 +2369,8 @@
       const price = typeof s.price === 'number' ? ` · ${euro(s.price, 3)}` : '';
       return `<li><span><b>${hm(s.start)}–${hm(s.end)}</b> <em>${what}</em></span><strong>${formatEnergy(s.kWh)} kWh${price}</strong></li>`;
     }).join('');
-    setText('batteryhistory-note', 'Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.');
+    const coarse = history.bucket === 'month' ? ' In het jaaroverzicht is zon of net per maand bepaald, dus bij benadering.' : '';
+    setText('batteryhistory-note', `Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.${coarse}`);
   }
 
   // The money parts of the battery balance: costs negative, savings and export positive. The
@@ -2380,6 +2383,14 @@
     parts.push(['Ontladen naar huis', cents(b.savedImport)]);
     if (b.gridExport >= 0.005) parts.push(['Ontladen naar het net', cents(b.gridExport)]);
     return parts;
+  }
+
+  // What the balance leaves out: charging with no known source and counter rises after a reset
+  function batteryDoubts(b) {
+    const out = [];
+    if (b.unknown > 0.05) out.push(`<li><span>Herkomst onbekend, niet gewaardeerd</span><strong>${formatEnergy(b.unknown)} kWh</strong></li>`);
+    if (b.doubtful > 0.05) out.push(`<li><span>Na teller-reset, niet meegeteld</span><strong>${formatEnergy(b.doubtful)} kWh</strong></li>`);
+    return out;
   }
 
   function partsTotal(parts) {

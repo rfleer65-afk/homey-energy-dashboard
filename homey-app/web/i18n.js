@@ -1019,6 +1019,8 @@
     "Naar huis": ["To home", "Ins Haus", "Til huset", "Till huset", "Til huset", "Verso casa", "Vers la maison", "Para casa", "A casa"],
     "Naar het net": ["To grid", "Ins Netz", "Til nettet", "Till nätet", "Til nettet", "Verso la rete", "Vers le réseau", "Para a rede", "A la red"],
     "Van de zon": ["From solar", "Von der Sonne", "Fra solen", "Från solen", "Fra solen", "Dal sole", "Du soleil", "Do sol", "Del sol"],
+    "Herkomst onbekend, niet gewaardeerd": ["Source unknown, not valued", "Herkunft unbekannt, nicht bewertet", "Ukjent kilde, ikke verdsatt", "Okänd källa, ej värderad", "Ukendt kilde, ikke værdisat", "Origine sconosciuta, non valutata", "Origine inconnue, non valorisée", "Origem desconhecida, não valorizada", "Origen desconocido, sin valorar"],
+    "Na teller-reset, niet meegeteld": ["After a meter reset, not counted", "Nach Zähler-Reset, nicht gezählt", "Etter tellerreset, ikke telt", "Efter mätarnollställning, ej räknad", "Efter tællernulstilling, ikke talt", "Dopo il reset del contatore, non conteggiata", "Après réinitialisation du compteur, non comptée", "Após reinício do contador, não contada", "Tras reinicio del contador, no contada"],
     "Misgelopen teruglevering": ["Export missed", "Entgangene Einspeisung", "Tapt eksport", "Missad export", "Mistet eksport", "Immissione persa", "Injection manquée", "Exportação perdida", "Exportación perdida"],
     "Geladen van de zon": ["Charged from solar", "Mit Sonne geladen", "Ladet fra solen", "Laddat från solen", "Opladet fra solen", "Caricata dal sole", "Chargée par le soleil", "Carregada pelo sol", "Cargada con el sol"],
     "Geladen van het net": ["Charged from grid", "Aus dem Netz geladen", "Ladet fra nettet", "Laddat från nätet", "Opladet fra nettet", "Caricata dalla rete", "Chargée sur le réseau", "Carregada pela rede", "Cargada de la red"],
@@ -1034,6 +1036,17 @@
       "Charger avec le soleil coûte l'injection que vous perdez ; décharger économise le prix du courant du réseau.",
       "Carregar com o sol custa a injeção de que abdica; descarregar poupa o preço da eletricidade da rede.",
       "Cargar con el sol cuesta la inyección a la que renuncias; descargar ahorra el precio de la luz de la red."
+    ],
+    "Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net. In het jaaroverzicht is zon of net per maand bepaald, dus bij benadering.": [
+      "Charging from solar costs the export you miss out on; discharging saves the price of power from the grid. In the yearly view the source (sun or grid) is determined per month, so approximate.",
+      "Laden mit Sonne kostet die Einspeisevergütung, die dir dadurch entgeht; Entladen spart den Preis für Strom aus dem Netz. In der Jahresansicht wird die Quelle (Sonne oder Netz) pro Monat bestimmt, also nur näherungsweise.",
+      "Lading fra solen koster eksporten du går glipp av; utlading sparer prisen på strøm fra nettet. I årsvisningen er kilden (sol eller nett) bestemt per måned, så omtrentlig.",
+      "Laddning från solen kostar den export du går miste om; urladdning sparar priset för el från nätet. I årsvyn bestäms källan (sol eller nät) per månad, så ungefärligt.",
+      "Opladning fra solen koster den eksport, du går glip af; afladning sparer prisen på strøm fra nettet. I årsvisningen er kilden (sol eller net) bestemt pr. måned, så omtrentligt.",
+      "Caricare dal sole costa l'immissione a cui rinunci; scaricare fa risparmiare il prezzo della corrente di rete. Nella vista annuale la fonte (sole o rete) è determinata per mese, quindi in modo approssimativo.",
+      "Charger avec le soleil coûte l'injection que vous perdez ; décharger économise le prix du courant du réseau. Dans la vue annuelle, la source (soleil ou réseau) est déterminée par mois, donc approximative.",
+      "Carregar com o sol custa a injeção de que abdica; descarregar poupa o preço da eletricidade da rede. Na vista anual a origem (sol ou rede) é determinada por mês, logo aproximada.",
+      "Cargar con el sol cuesta la inyección a la que renuncias; descargar ahorra el precio de la luz de la red. En la vista anual el origen (sol o red) se determina por mes, así que es aproximado."
     ],
     // Estimates and prices from Homey
     "geschat": ["estimated", "geschätzt", "anslått", "uppskattad", "anslået", "stimato", "estimé", "estimado", "estimado"],

@@ -1199,12 +1199,30 @@ function meterDelta(prev, next, maxKW = null) {
   return delta;
 }
 
-// Spreads the increase of a cumulative meter over the buckets
-function addMeterDeltas(target, buckets, entries, maxKW = null) {
+// The steps of a cumulative meter that count. With `doubtful` (a battery counter) the first
+// rise after a drop is left out and added to `doubtful.kWh`: a counter that fell and starts
+// again (Anker, GitHub #20: 30.9, 15.4, 0, 0, then 21.3 kWh in six hours) may not have measured
+// that rise as energy at all.
+function* meterSteps(entries, maxKW, doubtful) {
+  let afterDrop = false;
   for (let i = 1; i < entries.length; i++) {
     const delta = meterDelta(entries[i - 1], entries[i], maxKW);
-    if (!delta) continue; // skip meter resets, gaps and false readings
-    const idx = bucketIndex(buckets, entries[i - 1].t);
+    if (doubtful) {
+      if (entries[i].v < entries[i - 1].v) afterDrop = true;
+      else if (delta > 0 && afterDrop) {
+        afterDrop = false;
+        doubtful.kWh += delta;
+        continue;
+      }
+    }
+    if (delta > 0) yield { prev: entries[i - 1], next: entries[i], delta };
+  }
+}
+
+// Spreads the increase of a cumulative meter over the buckets
+function addMeterDeltas(target, buckets, entries, maxKW = null, doubtful = null) {
+  for (const { prev, delta } of meterSteps(entries, maxKW, doubtful)) {
+    const idx = bucketIndex(buckets, prev.t);
     if (idx >= 0) target[idx] += delta;
   }
 }
@@ -1228,11 +1246,10 @@ function addMeterCost(target, buckets, entries, price, sign = 1, maxKW = null) {
 
 // Stretches of time with the energy that went into (charge) or out of (discharge) a battery,
 // from its kWh counter or from its power
-function meterStretches(entries, kind, maxKW = null) {
+function meterStretches(entries, kind, maxKW = null, guard = false) {
   const out = [];
-  for (let i = 1; i < entries.length; i++) {
-    const kWh = meterDelta(entries[i - 1], entries[i], maxKW);
-    if (kWh > 0) out.push({ t0: entries[i - 1].t.getTime(), t1: entries[i].t.getTime(), kWh, kind });
+  for (const { prev, next, delta } of meterSteps(entries, maxKW, guard ? { kWh: 0 } : null)) {
+    out.push({ t0: prev.t.getTime(), t1: next.t.getTime(), kWh: delta, kind });
   }
   return out;
 }
@@ -1253,13 +1270,16 @@ function powerStretches(entries, sign) {
 // the sun, what that solar power would have earned as export. Where the energy came from or
 // went to follows the flows of the bucket it falls in. Calculated with today's rules and as if
 // net metering had already ended.
-function batteryEarnings(stretches, buckets, rows, tariff) {
+function batteryEarnings(stretches, buckets, rows, tariff, doubtful = 0) {
   // The four parts (with net metering) are shown apart: what charging from the grid cost, the
   // export missed by charging from the sun, the import saved and what export to the grid earned.
   // Energy still in the battery at the start or end of the period is not valued (GitHub #20).
   const result = {
     withNetting: 0, withoutNetting: 0, charged: 0, discharged: 0, known: false,
     gridCharge: 0, solarCharge: 0, savedImport: 0, gridExport: 0, unpriced: 0,
+    // Charged energy that came from neither measured sun nor measured grid import, and counter
+    // rises after a reset: neither is valued
+    unknown: 0, doubtful,
   };
   for (const s of stretches) {
     const idx = bucketIndex(buckets, new Date(s.t0));
@@ -1282,10 +1302,12 @@ function batteryEarnings(stretches, buckets, rows, tariff) {
       result.discharged += s.kWh;
     } else {
       const fromSun = row.charge > 0 ? Math.min(1, (row.solarToBattery || 0) / row.charge) : 0;
-      result.gridCharge += s.kWh * (1 - fromSun) * buy;
+      const fromGrid = row.charge > 0 ? Math.min(1 - fromSun, (row.gridToBattery || 0) / row.charge) : 0;
+      result.gridCharge += s.kWh * fromGrid * buy;
       result.solarCharge += s.kWh * fromSun * sellNow;
-      result.withNetting -= s.kWh * (fromSun * sellNow + (1 - fromSun) * buy);
-      result.withoutNetting -= s.kWh * (fromSun * sellLater + (1 - fromSun) * buy);
+      result.withNetting -= s.kWh * (fromSun * sellNow + fromGrid * buy);
+      result.withoutNetting -= s.kWh * (fromSun * sellLater + fromGrid * buy);
+      result.unknown += s.kWh * (1 - fromSun - fromGrid);
       result.charged += s.kWh;
     }
   }
@@ -1315,10 +1337,16 @@ function batteryHistory(stretches, buckets, rows, tariff, withSessions) {
     const share = s.kind === 'charge'
       ? (row.charge > 0 ? Math.min(1, (row.solarToBattery || 0) / row.charge) : 0)
       : (row.discharge > 0 ? Math.min(1, (row.batteryToGrid || 0) / row.discharge) : 0);
-    const price = typeof buy === 'number' && typeof sell === 'number' ? share * sell + (1 - share) * buy : null;
+    // Charging: the part that came from neither sun nor grid import has no price
+    const known = s.kind === 'charge' && row.charge > 0
+      ? Math.min(1, share + (row.gridToBattery || 0) / row.charge)
+      : 1;
+    const fromGrid = known - share;
+    const price = typeof buy === 'number' && typeof sell === 'number' && known > 0
+      ? (share * sell + fromGrid * buy) / known : null;
     const total = totals[s.kind];
     total.kWh += s.kWh;
-    if (price !== null) { total.priced += s.kWh; total.value += s.kWh * price; }
+    if (price !== null) { total.priced += s.kWh * known; total.value += s.kWh * known * price; }
     if (!withSessions) continue;
     let session = sessions[sessions.length - 1];
     if (!session || session.kind !== s.kind || s.t0 - session.end > SESSION_GAP) {
@@ -1328,7 +1356,7 @@ function batteryHistory(stretches, buckets, rows, tariff, withSessions) {
     session.end = Math.max(session.end, s.t1);
     session.kWh += s.kWh;
     session.shared += s.kWh * share;
-    if (price !== null) { session.priced += s.kWh; session.value += s.kWh * price; }
+    if (price !== null) { session.priced += s.kWh * known; session.value += s.kWh * known * price; }
   }
   const average = t => (t.priced > 0 ? t.value / t.priced : null);
   return {
@@ -2082,17 +2110,18 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
   }
   // Battery energy per stretch of time is kept for its earnings, when that block is shown
   const batteryStretches = !light && (shown.has('battery') || shown.has('batteryhistory')) ? [] : null;
+  const doubtful = { kWh: 0 };
   for (const battery of found.batteries) {
     const chargeCap = batteryMeterCapability(battery, 'charge');
     const dischargeCap = batteryMeterCapability(battery, 'discharge');
     if (chargeCap && dischargeCap) {
       jobs.push(entries(battery, chargeCap).then(e => {
-        addMeterDeltas(series.charge, buckets, e, maxKW);
-        batteryStretches?.push(...meterStretches(e, 'charge', maxKW));
+        addMeterDeltas(series.charge, buckets, e, maxKW, doubtful);
+        batteryStretches?.push(...meterStretches(e, 'charge', maxKW, true));
       }));
       jobs.push(entries(battery, dischargeCap).then(e => {
-        addMeterDeltas(series.discharge, buckets, e, maxKW);
-        batteryStretches?.push(...meterStretches(e, 'discharge', maxKW));
+        addMeterDeltas(series.discharge, buckets, e, maxKW, doubtful);
+        batteryStretches?.push(...meterStretches(e, 'discharge', maxKW, true));
       }));
     } else if (batteryPowerCapabilities(battery)) {
       jobs.push(batteryPowerEntries(battery, entries, cfg.battery).then(e => {
@@ -2209,7 +2238,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
     },
   });
   if (batteryStretches?.length) {
-    summary.batteryEarnings = batteryEarnings(batteryStretches, buckets, summary.rows, tariff);
+    summary.batteryEarnings = batteryEarnings(batteryStretches, buckets, summary.rows, tariff, doubtful.kWh);
     if (shown.has('batteryhistory')) summary.batteryHistory = batteryHistory(batteryStretches, buckets, summary.rows, tariff, PERIODS[period].bucket === 'hour');
   }
   if (!light && shown.has('solar')) summary.solarDevices = solarDevices.sort((a, b) => b.kWh - a.kWh);
@@ -3169,6 +3198,9 @@ module.exports = {
   shownBlocks,
   PinGuard,
   allocateFlows,
+  addMeterDeltas,
+  meterStretches,
+  batteryEarnings,
   liveTotals,
   buildSankey,
   buildZoneFlow,

@@ -738,6 +738,7 @@
     const earnings = history == null ? void 0 : history.batteryEarnings;
     if (earnings) {
       facts.push("<li><span>Saldo ".concat(period, "</span><strong>").concat(euro(partsTotal(batteryParts(earnings))), "</strong></li>"));
+      facts.push(...batteryDoubts(earnings));
       if (Math.abs(earnings.withoutNetting - earnings.withNetting) >= 0.01) {
         facts.push("<li><span>Zonder salderen (vanaf 2027)</span><strong>".concat(euro(earnings.withoutNetting), "</strong></li>"));
       }
@@ -1910,6 +1911,7 @@
       const parts = batteryParts(b);
       parts.forEach(([label, value]) => facts.push("<li><span>".concat(label, "</span><strong>").concat(euro(value), "</strong></li>")));
       facts.push("<li><span>Saldo ".concat(period).concat(b.unpriced > 0.05 ? " (zonder prijs voor een deel)" : "", "</span><strong>").concat(euro(partsTotal(parts)), "</strong></li>"));
+      facts.push(...batteryDoubts(b));
     }
     $("batteryhistory-facts").innerHTML = facts.join("");
     const positive = [
@@ -1931,7 +1933,8 @@
       const price = typeof s.price === "number" ? " · ".concat(euro(s.price, 3)) : "";
       return "<li><span><b>".concat(hm(s.start), "–").concat(hm(s.end), "</b> <em>").concat(what, "</em></span><strong>").concat(formatEnergy(s.kWh), " kWh").concat(price, "</strong></li>");
     }).join("");
-    setText("batteryhistory-note", "Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.");
+    const coarse = history.bucket === "month" ? " In het jaaroverzicht is zon of net per maand bepaald, dus bij benadering." : "";
+    setText("batteryhistory-note", "Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.".concat(coarse));
   }
   function batteryParts(b) {
     const cents = (v) => Math.round((v || 0) * 100) / 100;
@@ -1940,6 +1943,12 @@
     parts.push(["Ontladen naar huis", cents(b.savedImport)]);
     if (b.gridExport >= 5e-3) parts.push(["Ontladen naar het net", cents(b.gridExport)]);
     return parts;
+  }
+  function batteryDoubts(b) {
+    const out = [];
+    if (b.unknown > 0.05) out.push("<li><span>Herkomst onbekend, niet gewaardeerd</span><strong>".concat(formatEnergy(b.unknown), " kWh</strong></li>"));
+    if (b.doubtful > 0.05) out.push("<li><span>Na teller-reset, niet meegeteld</span><strong>".concat(formatEnergy(b.doubtful), " kWh</strong></li>"));
+    return out;
   }
   function partsTotal(parts) {
     return Math.round(parts.reduce((sum, [, v]) => sum + v * 100, 0)) / 100;
