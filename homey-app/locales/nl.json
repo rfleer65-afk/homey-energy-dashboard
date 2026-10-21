@@ -136,6 +136,8 @@
     "exportAfter": "Terugleververgoeding na salderen (€/kWh)",
     "exportAfterHelp": "Wat je leverancier vanaf 2027 per teruggeleverde kWh betaalt. Leeg: het wettelijk minimum, de helft van de leveringsprijs zonder energiebelasting.",
     "priceSource": "Prijzen van",
+    "currency": "Valuta",
+    "currencyHelp": "De valuta van de bedragen op het dashboard en hier. Automatisch neemt die van Homey Energie, of euro als Homey niets doorgeeft. Bedragen worden niet omgerekend; EnergyZero geeft Nederlandse prijzen in euro.",
     "sourceAuto": "Automatisch: Homey als daar dynamische prijzen staan, anders EnergyZero",
     "sourceHomey": "Homey Energie (elk land)",
     "sourceEnergyZero": "EnergyZero (Nederland)",

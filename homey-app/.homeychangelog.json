@@ -1,4 +1,8 @@
 {
+  "0.2.25": {
+    "en": "Currency choice in the app settings under Electricity prices: amounts on the dashboard, in the export and in the settings use it. Automatic follows Homey Energy.",
+    "nl": "Keuze van de valuta in de app-instellingen onder Stroomprijzen: bedragen op het dashboard, in de export en in de instellingen gebruiken die. Automatisch volgt Homey Energie."
+  },
   "0.2.24": {
     "en": "Battery use: a rise of the battery counter right after it fell back (a reset) is no longer counted as charging and is listed apart, and charging with no known source (sun or grid) is not valued and is listed apart.",
     "nl": "Batterijgebruik: een stijging van de batterijteller vlak nadat die terugviel (een reset) telt niet meer als laden en staat apart vermeld, en laden waarvan de herkomst (zon of net) niet bekend is wordt niet gewaardeerd en staat apart vermeld."

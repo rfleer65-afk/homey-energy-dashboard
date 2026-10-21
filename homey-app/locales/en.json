@@ -136,6 +136,8 @@
     "exportAfter": "Export compensation after net metering (€/kWh)",
     "exportAfterHelp": "What your supplier pays per exported kWh from 2027. Empty: the legal minimum, half of the supply price without energy tax.",
     "priceSource": "Prices from",
+    "currency": "Currency",
+    "currencyHelp": "The currency of the amounts on the dashboard and here. Automatic takes the one of Homey Energy, or euro when Homey does not give one. Amounts are not converted; EnergyZero gives Dutch prices in euro.",
     "sourceAuto": "Automatic: Homey when it has dynamic prices, otherwise EnergyZero",
     "sourceHomey": "Homey Energy (any country)",
     "sourceEnergyZero": "EnergyZero (the Netherlands)",

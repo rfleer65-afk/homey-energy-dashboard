@@ -150,6 +150,20 @@ function homeyPriceList(raw) {
 // Homey answers some questions with a plain value and others with an object around it
 const plain = raw => (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw.value ?? raw.type ?? raw.currency ?? null : raw);
 
+// The currency code in Homey's answer: 'SEK', { currency: 'SEK' }, { code: 'sek', symbol: 'kr' } …
+function currencyCode(raw) {
+  const fields = raw && typeof raw === 'object' && !Array.isArray(raw) ? [raw.currency, raw.code, raw.id, raw.value] : [raw];
+  for (const field of fields) {
+    const code = typeof field === 'string' ? field.trim().toUpperCase() : field && typeof field === 'object' ? currencyCode(field) : null;
+    if (code && /^[A-Z]{3}$/.test(code)) return code;
+  }
+  return null;
+}
+
+// The sign before an amount in a currency, for texts the page does not format itself
+const CURRENCY_SYMBOLS = { EUR: '€', GBP: '£', USD: '$', NOK: 'kr', SEK: 'kr', DKK: 'kr', CHF: 'CHF', PLN: 'zł' };
+const currencySymbol = currency => CURRENCY_SYMBOLS[currency || 'EUR'] || currency;
+
 // The formula of the user costs in Homey, found in whatever shape Homey returns it
 function formulaText(raw) {
   if (typeof raw === 'string') return raw.trim() || null;
@@ -302,7 +316,9 @@ class PriceService {
           formula,
           allIn: compileFormula(formula),
           fixed: Number.isFinite(fixedPrice) && fixedPrice > 0 ? fixedPrice : null,
-          currency: typeof plain(currency) === 'string' && /^[A-Z]{3}$/.test(plain(currency)) ? plain(currency) : null,
+          currency: currencyCode(currency),
+          // As Homey gave it, for a diagnosis when the code is not recognised
+          currencyAnswer: currency === null || currency === undefined ? null : JSON.stringify(currency).slice(0, 200),
         };
         // An answer that came too late is asked again in a minute rather than an hour
         this.homeyInfo = { at: slow ? Date.now() - HOMEY_TTL + HOMEY_RETRY : Date.now(), data };
@@ -575,4 +591,4 @@ class PriceService {
 
 }
 
-module.exports = { PriceService, cheapestWindow, priceLookup, compileFormula, homeyPriceList, formulaText, powerhourDevice };
+module.exports = { PriceService, currencySymbol, cheapestWindow, priceLookup, compileFormula, homeyPriceList, formulaText, powerhourDevice };

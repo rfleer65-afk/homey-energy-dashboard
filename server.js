@@ -11,7 +11,7 @@ const {
   batteryViews, lastYearMonths, monthTotals,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
-const { PriceService } = require('./lib/prices');
+const { PriceService, currencySymbol } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
@@ -37,7 +37,7 @@ const DEFAULTS = {
   boiler: { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '' },
   battery: { invertPower: false },
   grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
-  prices: { source: 'auto' },
+  prices: { source: 'auto', currency: '' },
   tariffs: {},
   demo: false,
 };
@@ -194,7 +194,7 @@ async function getLive(name = '', at = null) {
     const devices = await getDevices();
     const found = discover(devices, cfg.devices);
     live = buildLive(devices, found, view, { estimated: await getEstimated(devices, found) });
-    live.currency = await prices.currency().catch(() => null);
+    live.currency = cfg.prices.currency || await prices.currency().catch(() => null);
     if (live.layout.some(b => b.id === 'baseload')) live.baseload = await getBaseload(found).catch(() => null);
     if (live.layout.some(b => b.id === 'batterysize')) live.batterysize = getBatterySize(found);
     if (live.layout.some(b => b.id === 'peak') || live.layout.some(b => b.id === 'alerts')) {
@@ -215,7 +215,7 @@ async function getLive(name = '', at = null) {
       const market = cfg.prices.source === 'off' ? null : await prices.get({}).catch(() => null);
       live.alerts = buildAlerts({
         monitor: alertMonitor, found, baseload: live.baseload, baseloadLog, hours: Number(cfg.alerts?.hours) || 4,
-        price: market ? { market: market.current, currency: market.currency } : null,
+        price: market ? { market: market.current, currency: cfg.prices.currency || market.currency } : null,
         gridW: live.gridW,
         peak: live.peak,
       });
@@ -605,7 +605,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/export') {
       const period = url.searchParams.get('period') || 'today';
       if (!PERIODS[period]) return sendJson(res, 400, { error: `Onbekende periode: ${period}` });
-      const csv = historyCsv(await getHistory(period), url.searchParams.get('lang') || 'nl');
+      const csv = historyCsv(await getHistory(period), url.searchParams.get('lang') || 'nl', currencySymbol(cfg.prices.currency || await prices.currency().catch(() => null)));
       res.writeHead(200, {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="energie-${period}-${new Date().toISOString().slice(0, 10)}.csv"`,

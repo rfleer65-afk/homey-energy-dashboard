@@ -11,7 +11,7 @@ const {
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
   mergeNights, tankReading, showerSample, measuredFlow, withoutShower, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals, batteryDirection,
 } = require('./lib/energy');
-const { PriceService } = require('./lib/prices');
+const { PriceService, currencySymbol } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
@@ -62,7 +62,8 @@ const DEFAULTS = {
   boiler: { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '', calibrate: false },
   battery: { invertPower: false },
   grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
-  prices: { source: 'auto' },
+  // currency: '' follows Homey Energy, else a code such as 'SEK' chosen in the settings
+  prices: { source: 'auto', currency: '' },
   tariffs: {},
 };
 
@@ -465,7 +466,7 @@ class EnergyDashboardApp extends Homey.App {
       ? await this.getLiveAt(devices, found, view, at)
       : buildLive(devices, found, view, { estimated: await this.getEstimated(devices, found).catch(() => []) });
     live.version = this.homey.manifest.version;
-    live.currency = await this.prices.currency().catch(() => null);
+    live.currency = await this.getCurrency(cfg);
     // Roughly where the Homey is, for a screen that turns dark from sunset to sunrise
     const lat = this.homey.geolocation.getLatitude();
     const lon = this.homey.geolocation.getLongitude();
@@ -716,7 +717,7 @@ class EnergyDashboardApp extends Homey.App {
     const baseload = await this.getBaseload(found, cfg).catch(() => null);
     const market = cfg.prices.source === 'off' ? null : await this.prices.get({}).catch(() => null);
     return buildAlerts({
-      price: market ? { market: market.current, currency: market.currency } : null,
+      price: market ? { market: market.current, currency: await this.getCurrency(cfg) } : null,
       gridW: found.p1?.capabilitiesObj?.measure_power?.value ?? null,
       peak: this.getPeak(found, cfg),
       monitor: this.alertMonitor,
@@ -825,7 +826,7 @@ class EnergyDashboardApp extends Homey.App {
 
   async getExport(period, lang) {
     if (!PERIODS[period]) throw Object.assign(new Error(`Onbekende periode: ${period}`), { status: 400 });
-    return historyCsv(await this.getHistory(period), lang);
+    return historyCsv(await this.getHistory(period), lang, currencySymbol(await this.getCurrency(this.getConfig())));
   }
 
   // ---------- Diagnosis ----------
@@ -1014,12 +1015,17 @@ class EnergyDashboardApp extends Homey.App {
     return data;
   }
 
+  // The currency of the amounts: the one chosen in the settings, else the one of Homey Energy
+  async getCurrency(cfg) {
+    return cfg.prices.currency || await this.prices.currency().catch(() => null);
+  }
+
   // Where prices come from now, and what Homey Energy has, for the explanation in the settings
   async getPriceInfo() {
     const state = await this.prices.homeyState().catch(() => null);
     return {
       source: await this.prices.source().catch(() => 'energyzero'),
-      homey: state ? { type: state.type, formula: state.formula, usable: Boolean(state.allIn), fixed: state.fixed, currency: state.currency } : null,
+      homey: state ? { type: state.type, formula: state.formula, usable: Boolean(state.allIn), fixed: state.fixed, currency: state.currency, currencyAnswer: state.currencyAnswer } : null,
     };
   }
 

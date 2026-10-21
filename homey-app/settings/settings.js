@@ -25,7 +25,7 @@ function onHomeyReady(Homey) {
   const decimal = __('decimalSeparator') || '.';
   const amounts = [...form.querySelectorAll('[data-amount]')];
   const readAmount = text => {
-    const clean = String(text).trim().replace(/\s|€/g, '').replace(',', '.');
+    const clean = String(text).trim().replace(/\s|€|kr|£|\$|zł|chf/gi, '').replace(',', '.');
     return clean === '' ? undefined : /^-?(\d+\.?\d*|\.\d+)$/.test(clean) ? Number(clean) : NaN;
   };
   const showAmount = value => (value === null || value === undefined || value === '' ? '' : String(value).replace('.', decimal));
@@ -148,7 +148,7 @@ function onHomeyReady(Homey) {
           count: countToSave(),
         },
         grid: { fuseAmps: number('fuseAmps') ?? 25, capacityTariff: number('capacityTariff') ?? null, capacityMin: number('capacityMin') ?? 2.5 },
-        prices: { source: form.priceSource.value, chosen: true },
+        prices: { source: form.priceSource.value, chosen: true, currency: form.currency.value === 'auto' ? '' : form.currency.value },
         contract: contractToSave(number),
         forecast: forecastToSave(),
         alerts: { hours: number('alertHours') ?? 4, notify: form.alertNotify.checked },
@@ -208,6 +208,23 @@ function onHomeyReady(Homey) {
       parts.push(__('homeyNoPrices'));
     }
     note.textContent = parts.join(' ');
+    // Automatic is the currency of Homey Energy, or euro when Homey does not give one
+    form.currency.value = prices.currency || 'auto';
+    form.currency.options[0].textContent = `${__('automatic')} (${homey?.currency ? `Homey: ${homey.currency}` : 'EUR'})`;
+    const showCurrency = () => showSymbol(form.currency.value === 'auto' ? homey?.currency : form.currency.value);
+    form.currency.onchange = showCurrency;
+    showCurrency();
+  }
+
+  // The € in the texts about amounts becomes the sign of the chosen currency
+  const SYMBOLS = { EUR: '€', GBP: '£', USD: '$', NOK: 'kr', SEK: 'kr', DKK: 'kr', CHF: 'CHF', PLN: 'zł' };
+  function showSymbol(currency) {
+    const symbol = SYMBOLS[currency || 'EUR'] || currency;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      if (el.dataset.euro === undefined && !el.textContent.includes('€')) return;
+      if (el.dataset.euro === undefined) el.dataset.euro = el.textContent;
+      el.textContent = el.dataset.euro.split('€').join(symbol);
+    });
   }
 
   // ---------- Solar forecast ----------
