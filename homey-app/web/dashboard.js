@@ -485,6 +485,29 @@
     const history = state.history;
     const period = (PERIOD_LABELS[state.period] || "").toLowerCase();
     const facts = heating.devices.map((d) => "\n      <li><span>".concat(escapeHtml(d.name), "</span><strong>").concat(formatPower(d.watts), "</strong></li>"));
+    const water = heating.tapwater;
+    if (water && ["boiler", "cv"].includes(water.source)) {
+      const sourceName = (source) => source === "boiler" ? "Direct uit boiler" : "Via cv-ketel (naverwarming)";
+      const dateTime = (at) => {
+        if (!Number.isFinite(at) || !Number.isFinite(new Date(at).getTime())) return "Onbekend";
+        const options = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" };
+        if (water.timezone) options.timeZone = water.timezone;
+        try {
+          return new Intl.DateTimeFormat("nl-NL", options).format(new Date(at));
+        } catch (_) {
+          delete options.timeZone;
+          return new Intl.DateTimeFormat("nl-NL", options).format(new Date(at));
+        }
+      };
+      facts.push("<li><span>Warm tapwater · aangestuurd naar</span><strong>".concat(sourceName(water.source), "</strong></li>"));
+      facts.push("<li><span>".concat(water.since ? "Sinds" : "Eerste registratie (eerdere omschakeling onbekend)", "</span><strong>").concat(escapeHtml(dateTime(water.since || water.reportedAt)), "</strong></li>"));
+      facts.push("<li><span>Laatste drie omschakelopdrachten · geen fysieke standbevestiging</span></li>");
+      const changes = (Array.isArray(water.history) ? water.history : []).filter((e) => ["boiler", "cv"].includes(e.source)).slice(0, 3);
+      if (!changes.length) facts.push("<li><span>Nog geen omschakeling geregistreerd</span></li>");
+      for (const change of changes) {
+        facts.push("<li><span>".concat(escapeHtml(dateTime(change.at))).concat(change.reason ? "<br>".concat(escapeHtml(change.reason)) : "", "</span><strong>").concat(sourceName(change.source), "</strong></li>"));
+      }
+    }
     if ((_b = history == null ? void 0 : history.available) == null ? void 0 : _b.heating) {
       facts.push("<li><span>Stroom ".concat(period, "</span><strong>").concat(formatEnergy(history.totals.heating), " kWh</strong></li>"));
     }
