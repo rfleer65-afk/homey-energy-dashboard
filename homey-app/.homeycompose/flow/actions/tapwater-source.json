@@ -1,0 +1,44 @@
+{
+  "title": {
+    "nl": "Registreer warm tapwater via bron",
+    "en": "Record hot tap water source"
+  },
+  "titleFormatted": {
+    "nl": "Registreer warm tapwater via [[source]]: [[reason]]",
+    "en": "Record hot tap water via [[source]]: [[reason]]"
+  },
+  "hint": {
+    "nl": "Plaats na een geslaagde klepopdracht. Registreert de aangestuurde bron, niet de fysieke klepstand. Alleen een gewijzigde bron komt in de laatste drie; de eerste registratie is een beginstand.",
+    "en": "Place after a successful valve command. Records the commanded source, not physical valve position. Only changed sources enter the last three; the first report is a baseline."
+  },
+  "args": [
+    {
+      "name": "source",
+      "type": "dropdown",
+      "values": [
+        {
+          "id": "boiler",
+          "title": {
+            "nl": "Direct uit boiler",
+            "en": "Direct from storage tank"
+          }
+        },
+        {
+          "id": "cv",
+          "title": {
+            "nl": "Via cv-ketel (naverwarming)",
+            "en": "Via gas boiler (boost)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "reason",
+      "type": "text",
+      "placeholder": {
+        "nl": "Reden (mag leeg blijven)",
+        "en": "Reason (may be empty)"
+      }
+    }
+  ]
+}
