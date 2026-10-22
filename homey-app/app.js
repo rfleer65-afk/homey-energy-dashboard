@@ -18,6 +18,7 @@ const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
 const { contractFrom, allInFunction, describeTariff, SUPPLIERS } = require('./lib/tariffs');
 const { PeakTracker, peakSummary } = require('./lib/peak');
 const { WebServer } = require('./lib/webserver');
+const { recordSource } = require('./lib/tapwater');
 
 const DEVICES_CACHE_TTL = 5 * 1000;
 const HISTORY_CACHE_TTL = 60 * 1000;
@@ -143,6 +144,13 @@ class EnergyDashboardApp extends Homey.App {
     // Opt-in: a button in the shower marks the start and the end, which calibrates the shower head
     this.homey.flow.getActionCard('shower-start').registerRunListener(() => this.showerStart());
     this.homey.flow.getActionCard('shower-stop').registerRunListener(() => this.showerStop());
+    // Explicitly wired after a successful valve command. No extra polling or control.
+    this.homey.flow.getActionCard('tapwater-source').registerRunListener(args => {
+      const previous = this.homey.settings.get('tapwaterLog');
+      const next = recordSource(previous, args.source, args.reason);
+      if (next !== previous) this.homey.settings.set('tapwaterLog', next);
+      return true;
+    });
 
     // A tag per group in the fuse box (load in % of its fuse, and watts), for Flows
     this.groupTokens = new Map();
@@ -466,6 +474,11 @@ class EnergyDashboardApp extends Homey.App {
       ? await this.getLiveAt(devices, found, view, at)
       : buildLive(devices, found, view, { estimated: await this.getEstimated(devices, found).catch(() => []) });
     live.version = this.homey.manifest.version;
+    // Current command history belongs only to the live view, never to a historical replay.
+    const tapwater = !at && this.homey.settings.get('tapwaterLog');
+    if (tapwater && live.heating) {
+      live.heating.tapwater = { ...tapwater, timezone: this.homey.clock.getTimezone() };
+    }
     live.currency = await this.getCurrency(cfg);
     // Roughly where the Homey is, for a screen that turns dark from sunset to sunrise
     const lat = this.homey.geolocation.getLatitude();
