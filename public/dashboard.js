@@ -1922,9 +1922,11 @@
       { key: "solarToBattery", label: "Van de zon", color: css("--solar") },
       { key: "gridToBattery", label: "Van het net", color: css("--grid") }
     ];
+    const rows = history.rows.map((r) => ({ ...r, unknownToBattery: Math.max(0, (r.charge || 0) - (r.solarToBattery || 0) - (r.gridToBattery || 0)) }));
+    if (rows.some((r) => r.unknownToBattery >= 0.01)) negative.push({ key: "unknownToBattery", label: "Herkomst onbekend", color: css("--muted") });
     const legend = $("batteryhistory-legend");
     if (legend) legend.innerHTML = [...positive, ...negative].map((x) => '<span><i style="background:'.concat(x.color, '"></i>').concat(x.label, "</span>")).join("");
-    renderBars("batteryhistory-chart", history.rows, { positive, negative, unit: "kWh", bucket: history.bucket });
+    renderBars("batteryhistory-chart", rows, { positive, negative, unit: "kWh", bucket: history.bucket });
     const list = $("batteryhistory-sessions");
     const sessions = info.sessions || [];
     list.hidden = !sessions.length;

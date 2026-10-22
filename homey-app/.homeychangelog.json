@@ -1,4 +1,8 @@
 {
+  "0.2.26": {
+    "en": "Circuits: a P1 meter put in a group no longer counts as use of that group, and it is no longer offered for groups. Battery use: charging with no known source shows as its own part of the bars.",
+    "nl": "Groepen: een P1-meter in een groep telt niet meer als verbruik van die groep, en wordt niet meer aangeboden voor groepen. Batterijgebruik: laden met onbekende herkomst staat als eigen deel in de staven."
+  },
   "0.2.25": {
     "en": "Currency choice in the app settings under Electricity prices: amounts on the dashboard, in the export and in the settings use it. Automatic follows Homey Energy.",
     "nl": "Keuze van de valuta in de app-instellingen onder Stroomprijzen: bedragen op het dashboard, in de export en in de instellingen gebruiken die. Automatisch volgt Homey Energie."

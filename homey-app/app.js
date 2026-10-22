@@ -7,7 +7,7 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy, consumerStatus,
+  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy, isGridMeter, consumerStatus,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
   mergeNights, tankReading, showerSample, measuredFlow, withoutShower, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals, batteryDirection,
 } = require('./lib/energy');
@@ -1078,6 +1078,8 @@ class EnergyDashboardApp extends Homey.App {
           estimate: hasUsageEstimate(d) || estimatedIds.has(d.id),
           // A summary of Power by the Hour (Σ): it copies another meter, so it is no group device
           copy: isCopy(d),
+          // The P1 meter or another meter of the whole house: no group device either
+          gridMeter: d.id === found.p1?.id || isGridMeter(d),
           // Whether the dashboard counts it as a consumer by itself, or why not (Consumers)
           consumer: consumerStatus(d, found),
         }))

@@ -896,6 +896,8 @@ function groupWatts(group, byId, estimates = new Map(), shares = new Map(), extr
       if (extra) return { name: extra.name, watts: extra.watts / share, estimated: true };
       const d = byId.get(id);
       if (!d) return null;
+      // The meter of the whole house measures every group at once, not its own use (forum NL #100)
+      if (isGridMeter(d)) return null;
       return powerCapability(d)
         ? { name: d.name, watts: Math.max(0, usePower(d) || 0) / share }
         : { name: d.name, watts: (estimates.get(d.id) || 0) / share, estimated: true };
@@ -981,7 +983,7 @@ async function groupHistory(groups, devices, entries, start, steps, estimated = 
   const byId = new Map(devices.map(d => [d.id, d]));
   const shares = groupShares(groups);
   const series = new Map();
-  const ids = [...new Set(groups.flatMap(g => g.devices))].filter(id => byId.get(id) && powerCapability(byId.get(id)));
+  const ids = [...new Set(groups.flatMap(g => g.devices))].filter(id => byId.get(id) && powerCapability(byId.get(id)) && !isGridMeter(byId.get(id)));
   const constant = new Map(estimated
     .filter(d => byId.has(d.id) && !powerCapability(byId.get(d.id)) && !has(byId.get(d.id), 'onoff') && d.watts > 0)
     .map(d => [d.id, d.watts]));

@@ -6,7 +6,7 @@ const path = require('path');
 const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
-  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy, consumerStatus,
+  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy, isGridMeter, consumerStatus,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, mergeNights, importMeterExport, UploadParts, connectionMaxW,
   batteryViews, lastYearMonths, monthTotals,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
@@ -474,6 +474,7 @@ async function getDeviceList() {
       heatPump: (d.capabilities || []).includes('measure_power.in'),
       estimate: hasUsageEstimate(d),
       copy: isCopy(d),
+      gridMeter: d.id === found.p1?.id || isGridMeter(d),
       consumer: consumerStatus(d, found),
     })),
   };
